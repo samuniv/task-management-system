@@ -1,12 +1,14 @@
 using BlazorWasm.Shared.Models;
 using BlazorWasm.Shared.Enums;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using TaskStatus = BlazorWasm.Shared.Enums.TaskStatus;
 
 namespace BlazorWasm.Server.Data;
 
 public static class DbInitializer
 {
-    public static void Initialize(ApplicationDbContext context)
+    public static async Task InitializeAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
     {
         // Ensure the database is created
         context.Database.EnsureCreated();
@@ -17,55 +19,90 @@ public static class DbInitializer
             return; // DB has been seeded
         }
 
-        // Create sample users
-        var users = new ApplicationUser[]
-        {
-            new ApplicationUser
-            {
-                Email = "admin@taskmanager.com",
-                UserName = "admin@taskmanager.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-                FirstName = "System",
-                LastName = "Administrator",
-                CreatedAt = DateTime.UtcNow.AddDays(-30),
-                IsActive = true
-            },
-            new ApplicationUser
-            {
-                Email = "john.doe@company.com",
-                UserName = "john.doe@company.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!"),
-                FirstName = "John",
-                LastName = "Doe",
-                CreatedAt = DateTime.UtcNow.AddDays(-25),
-                IsActive = true
-            },
-            new ApplicationUser
-            {
-                Email = "jane.smith@company.com",
-                UserName = "jane.smith@company.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!"),
-                FirstName = "Jane",
-                LastName = "Smith",
-                CreatedAt = DateTime.UtcNow.AddDays(-20),
-                IsActive = true
-            },
-            new ApplicationUser
-            {
-                Email = "mike.wilson@company.com",
-                UserName = "mike.wilson@company.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!"),
-                FirstName = "Mike",
-                LastName = "Wilson",
-                CreatedAt = DateTime.UtcNow.AddDays(-15),
-                IsActive = true
-            }
-        };
+        // Create roles first
+        await CreateRolesAsync(roleManager);
 
-        context.Users.AddRange(users);
-        context.SaveChanges();
+        // Create sample users
+        var users = await CreateUsersAsync(userManager);
 
         // Create sample tasks
+        await CreateTasksAsync(context, users);
+
+        // Create sample comments
+        await CreateCommentsAsync(context, users);
+    }
+
+    private static async Task CreateRolesAsync(RoleManager<ApplicationRole> roleManager)
+    {
+        var roles = new[] { "Admin", "User" };
+
+        foreach (var roleName in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                var role = new ApplicationRole
+                {
+                    Name = roleName,
+                    Description = $"{roleName} role"
+                };
+                await roleManager.CreateAsync(role);
+            }
+        }
+    }
+
+    private static async Task<List<ApplicationUser>> CreateUsersAsync(UserManager<ApplicationUser> userManager)
+    {
+        var users = new List<ApplicationUser>();
+
+        var adminUser = new ApplicationUser
+        {
+            Email = "admin@taskmanager.com",
+            UserName = "admin@taskmanager.com",
+            FirstName = "System",
+            LastName = "Administrator",
+            CreatedAt = DateTime.UtcNow.AddDays(-30),
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+            users.Add(adminUser);
+        }
+
+        var regularUsers = new[]
+        {
+            new { Email = "john.doe@company.com", FirstName = "John", LastName = "Doe", Password = "Password123!" },
+            new { Email = "jane.smith@company.com", FirstName = "Jane", LastName = "Smith", Password = "Password123!" },
+            new { Email = "mike.wilson@company.com", FirstName = "Mike", LastName = "Wilson", Password = "Password123!" }
+        };
+
+        foreach (var userData in regularUsers)
+        {
+            var user = new ApplicationUser
+            {
+                Email = userData.Email,
+                UserName = userData.Email,
+                FirstName = userData.FirstName,
+                LastName = userData.LastName,
+                CreatedAt = DateTime.UtcNow.AddDays(-20),
+                IsActive = true
+            };
+
+            var userResult = await userManager.CreateAsync(user, userData.Password);
+            if (userResult.Succeeded)
+            {
+                await userManager.AddToRoleAsync(user, "User");
+                users.Add(user);
+            }
+        }
+
+        return users;
+    }
+
+    private static async Task CreateTasksAsync(ApplicationDbContext context, List<ApplicationUser> users)
+    {
         var tasks = new TaskItem[]
         {
             new TaskItem
@@ -136,9 +173,13 @@ public static class DbInitializer
         };
 
         context.Tasks.AddRange(tasks);
-        context.SaveChanges();
+        await context.SaveChangesAsync();
+    }
 
-        // Create sample comments
+    private static async Task CreateCommentsAsync(ApplicationDbContext context, List<ApplicationUser> users)
+    {
+        var tasks = await context.Tasks.ToListAsync();
+        
         var comments = new Comment[]
         {
             new Comment
@@ -184,6 +225,6 @@ public static class DbInitializer
         };
 
         context.Comments.AddRange(comments);
-        context.SaveChanges();
+        await context.SaveChangesAsync();
     }
 }

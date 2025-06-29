@@ -74,7 +74,7 @@
         "dependencies": [
           2
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -90,7 +90,7 @@
             "description": "Securely store and retrieve sensitive configuration values, such as the JWT signing key, issuer, and audience, using AWS Secrets Manager to avoid hardcoding them in configuration files.",
             "dependencies": [],
             "details": "Install the required AWS SDK for .NET packages. Configure the application's host builder to use the AWS Systems Manager configuration provider to load secrets at startup. Create the necessary secrets in the AWS console. Ensure the application's execution environment has an IAM role with permissions to read these secrets.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -101,7 +101,7 @@
               2
             ],
             "details": "Create a token generation service that accepts an ApplicationUser object. This service will retrieve the JWT secret key from the configuration provided by AWS Secrets Manager and build a token with appropriate claims (e.g., sub, jti, email, roles). Configure JWT Bearer authentication middleware in Program.cs, setting the TokenValidationParameters to use the key, issuer, and audience from the secure configuration.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -111,7 +111,7 @@
               3
             ],
             "details": "Extend the ApplicationUser entity to store a list of refresh tokens, including the token string, expiration date, and creation date. When a user logs in, generate and store a cryptographically secure refresh token. Create a new API endpoint (e.g., /api/auth/refresh) that accepts a refresh token, validates it against the stored value, revokes it, and issues a new JWT and refresh token pair. The refresh token should be sent to the client via a secure, HttpOnly cookie.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
@@ -121,7 +121,7 @@
               3
             ],
             "details": "In Program.cs, use the AddAuthorization method to define policies, such as a policy named 'AdminAccess' that requires the 'Admin' role claim. Ensure the JWT generation service correctly includes the user's roles in the 'role' claim. Apply these policies to controllers or specific action methods using the [Authorize(Policy = \"AdminAccess\")] attribute.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -135,7 +135,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -143,7 +143,7 @@
             "description": "Establish the foundational data model for a 'Task' including all necessary fields (e.g., title, description, status, due_date). Set up the basic API controller file and routing structure for the task resource.",
             "dependencies": [],
             "details": "Define the database schema or data transfer object (DTO) for the Task. Create the initial controller class/file and register the base route (e.g., /api/tasks).",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -153,7 +153,7 @@
               1
             ],
             "details": "The endpoint should accept query parameters like `?page=1&limit=10&status=pending&sortBy=createdAt:desc`. The implementation must efficiently query the database to prevent performance bottlenecks.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -163,7 +163,7 @@
               1
             ],
             "details": "Implement validation logic for the incoming task data. Upon successful creation, the API should return a 201 Created status code along with the newly created task object.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -173,7 +173,7 @@
               1
             ],
             "details": "The endpoint will take the task ID as a URL parameter and the complete updated task object in the request body. Implement validation for the incoming data and handle cases where the task ID does not exist.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
@@ -183,7 +183,7 @@
               1
             ],
             "details": "This typically involves adding a `deletedAt` timestamp or an `isActive` boolean flag to the Task model. The DELETE request will update this field for the specified task ID. The GET endpoint (Subtask 2) should be updated to exclude soft-deleted tasks by default.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -197,7 +197,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -205,7 +205,7 @@
             "description": "Set up the basic Blazor WebAssembly project structure, including the main layout components (e.g., MainLayout.razor, NavMenu.razor). Create a typed HttpClient service for interacting with the backend API.",
             "dependencies": [],
             "details": "This initial step involves creating the Blazor WASM project, defining the shared UI layout, and configuring a basic HttpClient in Program.cs. An API client service will be created to encapsulate all HTTP calls to the backend, providing a clean interface for other services.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -644,7 +644,7 @@
     ],
     "metadata": {
       "created": "2025-06-29T18:19:11.941Z",
-      "updated": "2025-06-29T18:56:14.816Z",
+      "updated": "2025-06-29T19:28:14.649Z",
       "description": "Tasks for master context"
     }
   }
