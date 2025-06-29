@@ -52,7 +52,7 @@ A single-page application built entirely with Blazor WebAssembly for task tracki
 ### 4.2 Relationships
 
 - User (1) → Tasks (Many) [as Assignee]
-- User (1) → Tasks (Many) [as Creator]  
+- User (1) → Tasks (Many) [as Creator]
 - Task (1) → Comments (Many)
 - User (1) → Comments (Many)
 
@@ -118,16 +118,16 @@ A single-page application built entirely with Blazor WebAssembly for task tracki
 
 ## 6. Feature Set & Acceptance Criteria
 
-| Feature                    | Priority | Acceptance Criteria                                                                                                                    |
-| -------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Feature                    | Priority | Acceptance Criteria                                                                                                                                                                                                         |
+| -------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Authentication & Roles     | High     | Users sign in/up; JWT + refresh token issued; Admin role can manage users and all tasks; User role can only manage assigned tasks; access denied (403) when unauthorized; lockout after 5 failed attempts in 15 min window. |
-| Task CRUD                  | High     | Create/Read/Update/Delete tasks via API; UI shows correct states; soft-deleted tasks hidden; rollback on failure.                      |
-| Search & Filter            | High     | Tasks filter within 300ms; correct results for partial matches; clear filter resets list.                                              |
-| Pagination                 | High     | Page navigation works; total pages accurate; changing page size updates display.                                                       |
-| Dashboard Charts           | Medium   | Chart displays counts by status; updates on data change; readable labels; accessible tooltips.                                         |
-| CSV Export                 | Medium   | Exports current list view; supports streaming large datasets; download triggers in <5s for 50k rows.                                   |
-| AI/LLM-Driven Enhancements | Medium   | Features enabled via config; meet individual acceptance criteria per feature below.                                                    |
-| Dark/Light Mode            | Low      | Toggle persists in localStorage; respects OS theme; accessible color contrast (WCAG AA).                                               |
+| Task CRUD                  | High     | Create/Read/Update/Delete tasks via API; UI shows correct states; soft-deleted tasks hidden; rollback on failure.                                                                                                           |
+| Search & Filter            | High     | Tasks filter within 300ms; correct results for partial matches; clear filter resets list.                                                                                                                                   |
+| Pagination                 | High     | Page navigation works; total pages accurate; changing page size updates display.                                                                                                                                            |
+| Dashboard Charts           | Medium   | Chart displays counts by status; updates on data change; readable labels; accessible tooltips.                                                                                                                              |
+| CSV Export                 | Medium   | Exports current list view; supports streaming large datasets; download triggers in <5s for 50k rows.                                                                                                                        |
+| AI/LLM-Driven Enhancements | Medium   | Features enabled via config; meet individual acceptance criteria per feature below.                                                                                                                                         |
+| Dark/Light Mode            | Low      | Toggle persists in localStorage; respects OS theme; accessible color contrast (WCAG AA).                                                                                                                                    |
 
 ---
 

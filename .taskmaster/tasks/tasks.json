@@ -9,7 +9,7 @@
         "testStrategy": "Run `docker-compose up --build`. Verify that both the API server and MySQL containers start successfully and that the API can connect to the database. Check that the Blazor WASM application loads in the browser.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -22,8 +22,47 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define User, Task, and Comment Entities",
+            "description": "Create the C# Plain Old CLR Object (POCO) classes for the User, Task, and Comment entities. These classes will map to the database tables and should include all necessary properties and navigation properties.",
+            "dependencies": [],
+            "details": "Create three C# classes: User.cs, Task.cs, and Comment.cs. For User, include properties like Id, UserName, and Email. For Task, include Id, Title, Description, Status, and foreign keys for the assigned User. For Comment, include Id, Text, CreatedDate, and foreign keys for the author (User) and the associated Task.",
+            "status": "done"
+          },
+          {
+            "id": 2,
+            "title": "Configure DbContext and Entity Relationships",
+            "description": "Create the application's DbContext class. Add DbSet properties for each entity and configure the relationships between them using the Fluent API in the OnModelCreating method.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a class (e.g., ApplicationDbContext) that inherits from DbContext. Add DbSet<User>, DbSet<Task>, and DbSet<Comment> properties. Override OnModelCreating to define the one-to-many relationship between User and Task, and the one-to-many relationship between Task and Comment.",
+            "status": "done"
+          },
+          {
+            "id": 3,
+            "title": "Create Initial Database Migration",
+            "description": "Use the Entity Framework Core command-line tools to generate the initial database migration based on the configured DbContext and entity models. This migration will contain the script to create the database schema.",
+            "dependencies": [
+              2
+            ],
+            "details": "Open the terminal in the project directory containing the DbContext. Run the command 'dotnet ef migrations add InitialCreate'. Review the generated migration file to ensure it accurately represents the tables, columns, and relationships for the User, Task, and Comment entities.",
+            "status": "done"
+          },
+          {
+            "id": 4,
+            "title": "Implement DbInitializer for Seeding Data",
+            "description": "Create a data seeding mechanism to populate the database with initial sample data upon application startup. This is essential for development and testing purposes.",
+            "dependencies": [
+              3
+            ],
+            "details": "Create a static class, such as 'DbInitializer', with a method that accepts the DbContext. Inside this method, check if the database already contains data. If not, create several instances of User, Task, and Comment, add them to the DbContext, and call SaveChanges(). Call this initializer method from the application's entry point (e.g., Program.cs).",
+            "status": "done"
+          }
+        ]
       },
       {
         "id": 3,
@@ -35,7 +74,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -43,7 +82,7 @@
             "description": "Set up the foundational ASP.NET Core Identity framework, including user and role stores, password hashing, and database context configuration. This is the first step for managing users and roles.",
             "dependencies": [],
             "details": "Configure services in Program.cs for AddIdentity, AddEntityFrameworkStores, and AddDefaultTokenProviders. Create custom ApplicationUser and ApplicationRole classes inheriting from IdentityUser and IdentityRole. Update the ApplicationDbContext to include the Identity schema. Generate and apply database migrations to create the necessary tables.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -605,7 +644,7 @@
     ],
     "metadata": {
       "created": "2025-06-29T18:19:11.941Z",
-      "updated": "2025-06-29T18:29:22.119Z",
+      "updated": "2025-06-29T18:56:14.816Z",
       "description": "Tasks for master context"
     }
   }
