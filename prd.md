@@ -14,10 +14,6 @@ A single-page application built entirely with Blazor WebAssembly for task tracki
 - AI/LLM-driven enhancements (optional phase)
 - Docker-based local development and AWS ECS deployment
 
-**Out of scope:**
-
-- Mobile-native apps (PWA enhancements planned later)
-
 ---
 
 ## 2. Technology Stack & Versions
