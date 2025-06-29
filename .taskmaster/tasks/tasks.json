@@ -1,0 +1,612 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Project Scaffolding and Docker Environment Setup",
+        "description": "Initialize the solution structure with three projects: BlazorWasm.Client (Blazor WebAssembly), BlazorWasm.Server (ASP.NET Core API), and BlazorWasm.Shared (for shared models and DTOs). Set up the Docker Compose file as specified in the PRD for local development with MySQL and the API server.",
+        "details": "Use the `dotnet new blazorwasm --hosted` template with .NET 9.0. Create a `docker-compose.yml` file. For the server, use the `mcr.microsoft.com/dotnet/sdk:9.0` image for building and `mcr.microsoft.com/dotnet/aspnet:9.0` for running. For the database, use `mysql:8.0`. Configure environment variables for the connection string in the compose file for the server.",
+        "testStrategy": "Run `docker-compose up --build`. Verify that both the API server and MySQL containers start successfully and that the API can connect to the database. Check that the Blazor WASM application loads in the browser.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Define Data Models and Set Up EF Core",
+        "description": "Define the core data models (User, Task, Comment) and enums (Role, TaskStatus, Priority) in the BlazorWasm.Shared project. Set up Entity Framework Core 9.0 in the BlazorWasm.Server project with the MySQL provider. Create the DbContext and configure entity relationships and constraints.",
+        "details": "Install `Microsoft.EntityFrameworkCore.Design` and `Pomelo.EntityFrameworkCore.MySql` (version compatible with EF Core 9.0, likely a preview version like 9.0.0-preview.*). Define entities as plain C# classes with data annotations or Fluent API for configuration. Create an initial migration using `dotnet ef migrations add InitialCreate`. Implement the `DbInitializer` class to seed initial admin/user accounts and sample tasks.",
+        "testStrategy": "Run the initial migration against the local MySQL container to create the schema. Verify all tables, columns, and relationships are created correctly using a database client. Write a unit test for the `DbInitializer` to ensure it seeds data as expected.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement API Authentication and Authorization",
+        "description": "Implement JWT-based authentication using ASP.NET Core Identity. Create endpoints for user registration and login (`/api/auth/login`). The login endpoint should return a JWT and a secure, HttpOnly refresh token. Implement role-based authorization policies ('Admin', 'User').",
+        "details": "Install `Microsoft.AspNetCore.Identity.EntityFrameworkCore`. Configure Identity services in `Program.cs`. Use `AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...)` to set up JWT validation. Store JWT secrets in AWS Secrets Manager for production, accessed via ASP.NET Core's configuration provider. The refresh token should be stored in the database, associated with the user, and sent back as a secure, HttpOnly cookie. Implement rate limiting on the login endpoint using `Microsoft.AspNetCore.RateLimiting` to prevent brute-force attacks (5 failed attempts in 15 mins).",
+        "testStrategy": "Use xUnit to test the auth controller. Mock dependencies to test token generation and user validation. Use an API client like Postman or Insomnia to test the login endpoint, verifying the JWT payload, refresh token cookie, and status codes. Test role policies by attempting to access a protected endpoint with incorrect roles.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Configure ASP.NET Core Identity",
+            "description": "Set up the foundational ASP.NET Core Identity framework, including user and role stores, password hashing, and database context configuration. This is the first step for managing users and roles.",
+            "dependencies": [],
+            "details": "Configure services in Program.cs for AddIdentity, AddEntityFrameworkStores, and AddDefaultTokenProviders. Create custom ApplicationUser and ApplicationRole classes inheriting from IdentityUser and IdentityRole. Update the ApplicationDbContext to include the Identity schema. Generate and apply database migrations to create the necessary tables.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Integrate with AWS Secrets Manager for Secret Storage",
+            "description": "Securely store and retrieve sensitive configuration values, such as the JWT signing key, issuer, and audience, using AWS Secrets Manager to avoid hardcoding them in configuration files.",
+            "dependencies": [],
+            "details": "Install the required AWS SDK for .NET packages. Configure the application's host builder to use the AWS Systems Manager configuration provider to load secrets at startup. Create the necessary secrets in the AWS console. Ensure the application's execution environment has an IAM role with permissions to read these secrets.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Implement JWT Generation and Validation",
+            "description": "Create a service to generate JSON Web Tokens (JWTs) for authenticated users and configure the application pipeline to validate incoming JWTs on protected endpoints.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create a token generation service that accepts an ApplicationUser object. This service will retrieve the JWT secret key from the configuration provided by AWS Secrets Manager and build a token with appropriate claims (e.g., sub, jti, email, roles). Configure JWT Bearer authentication middleware in Program.cs, setting the TokenValidationParameters to use the key, issuer, and audience from the secure configuration.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Create Refresh Token Mechanism",
+            "description": "Implement a system for issuing, storing, and validating refresh tokens to allow clients to obtain new JWTs without requiring the user to re-enter their credentials, improving user experience.",
+            "dependencies": [
+              3
+            ],
+            "details": "Extend the ApplicationUser entity to store a list of refresh tokens, including the token string, expiration date, and creation date. When a user logs in, generate and store a cryptographically secure refresh token. Create a new API endpoint (e.g., /api/auth/refresh) that accepts a refresh token, validates it against the stored value, revokes it, and issues a new JWT and refresh token pair. The refresh token should be sent to the client via a secure, HttpOnly cookie.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "Define Role-Based Authorization Policies",
+            "description": "Configure and apply authorization policies based on user roles (e.g., 'Admin', 'User') to restrict access to specific API endpoints, ensuring that only users with the correct permissions can access sensitive resources.",
+            "dependencies": [
+              3
+            ],
+            "details": "In Program.cs, use the AddAuthorization method to define policies, such as a policy named 'AdminAccess' that requires the 'Admin' role claim. Ensure the JWT generation service correctly includes the user's roles in the 'role' claim. Apply these policies to controllers or specific action methods using the [Authorize(Policy = \"AdminAccess\")] attribute.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Develop Core Task CRUD API Endpoints",
+        "description": "Create API endpoints for full CRUD (Create, Read, Update, Delete) operations on Tasks. The GET endpoint must support server-side pagination, searching, and filtering. The DELETE operation should perform a soft delete.",
+        "details": "Create a `TasksController`. The `GET /api/tasks` endpoint should accept query parameters: `page`, `pageSize`, `search`, `sort`, `filterStatus`. Use LINQ to build the query dynamically. Return the total item count in a custom header like `X-Total-Count`. For `PUT /api/tasks/{id}`, implement PATCH semantics using `Microsoft.AspNetCore.JsonPatch` to handle partial updates efficiently. For `DELETE /api/tasks/{id}`, set the `IsDeleted` flag to true and save changes. Apply `[Authorize]` attributes to endpoints, restricting access based on roles (e.g., Admin can delete any task, User can only edit their own).",
+        "testStrategy": "Write xUnit integration tests using Testcontainers for MySQL. The tests should seed the database, call the API endpoints, and assert the responses. Test cases should cover pagination logic, search accuracy, filter application, soft delete behavior, and authorization rules.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Task Model and Controller Structure",
+            "description": "Establish the foundational data model for a 'Task' including all necessary fields (e.g., title, description, status, due_date). Set up the basic API controller file and routing structure for the task resource.",
+            "dependencies": [],
+            "details": "Define the database schema or data transfer object (DTO) for the Task. Create the initial controller class/file and register the base route (e.g., /api/tasks).",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Implement GET /tasks Endpoint with Advanced Querying",
+            "description": "Develop the GET endpoint to retrieve a list of tasks. Implement server-side logic for pagination (e.g., page, limit), dynamic filtering (e.g., by status, due_date), and sorting (e.g., by creation_date, priority).",
+            "dependencies": [
+              1
+            ],
+            "details": "The endpoint should accept query parameters like `?page=1&limit=10&status=pending&sortBy=createdAt:desc`. The implementation must efficiently query the database to prevent performance bottlenecks.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Implement POST /tasks Endpoint for Task Creation",
+            "description": "Create the POST endpoint to allow for the creation of new tasks. This includes request body validation to ensure all required fields are present and correctly formatted.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement validation logic for the incoming task data. Upon successful creation, the API should return a 201 Created status code along with the newly created task object.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Implement PUT /tasks/{id} Endpoint for Task Updates",
+            "description": "Develop the PUT endpoint to update an existing task by its ID. The endpoint should handle full replacement of the task resource and validate the incoming data.",
+            "dependencies": [
+              1
+            ],
+            "details": "The endpoint will take the task ID as a URL parameter and the complete updated task object in the request body. Implement validation for the incoming data and handle cases where the task ID does not exist.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "Implement DELETE /tasks/{id} Endpoint with Soft Delete",
+            "description": "Create the DELETE endpoint to handle task removal. Implement a 'soft delete' mechanism, where tasks are marked as inactive or archived instead of being permanently removed from the database.",
+            "dependencies": [
+              1
+            ],
+            "details": "This typically involves adding a `deletedAt` timestamp or an `isActive` boolean flag to the Task model. The DELETE request will update this field for the specified task ID. The GET endpoint (Subtask 2) should be updated to exclude soft-deleted tasks by default.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Blazor Client Setup and Authentication State Management",
+        "description": "Set up the Blazor WASM client project with a main layout, navigation, and a centralized API client service for communicating with the backend. Implement secure storage for the JWT and a mechanism to handle token refresh.",
+        "details": "Create a `MainLayout.razor` with a navigation bar and a content area. Create an `AuthService` to handle login, logout, and user state. Use a `CascadingAuthenticationState` provider to propagate auth state throughout the app. Store the JWT in `sessionStorage` for simplicity. Implement an `HttpClient` delegating handler that automatically attaches the JWT to outgoing requests and attempts to use the refresh token endpoint (`/api/auth/refresh`) upon receiving a 401 Unauthorized response.",
+        "testStrategy": "Create a `Login.razor` component. After a successful login, verify the JWT is stored and the UI updates to a logged-in state. Test that navigating to a protected route redirects to login when unauthenticated. After login, verify the user can access protected routes and their information is displayed correctly.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Main Layout and API Client Service",
+            "description": "Set up the basic Blazor WebAssembly project structure, including the main layout components (e.g., MainLayout.razor, NavMenu.razor). Create a typed HttpClient service for interacting with the backend API.",
+            "dependencies": [],
+            "details": "This initial step involves creating the Blazor WASM project, defining the shared UI layout, and configuring a basic HttpClient in Program.cs. An API client service will be created to encapsulate all HTTP calls to the backend, providing a clean interface for other services.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Implement Authentication Service (AuthService)",
+            "description": "Develop a dedicated AuthService to handle user login and logout logic. This service will interact with the API client to send authentication requests and will manage the storage of authentication tokens.",
+            "dependencies": [
+              1
+            ],
+            "details": "The AuthService will contain methods like LoginAsync and LogoutAsync. Upon a successful login, it will be responsible for storing the received JWT (JSON Web Token) securely in the browser's local storage. It will also handle removing the token upon logout.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Set Up Custom Authentication State Provider",
+            "description": "Create a custom AuthenticationStateProvider that reads the authentication state from local storage to inform the Blazor application about the current user's identity and claims.",
+            "dependencies": [
+              2
+            ],
+            "details": "This custom provider will override the GetAuthenticationStateAsync method. It will retrieve the token from local storage, parse it to create a ClaimsPrincipal, and use NotifyAuthenticationStateChanged to update the application's UI and authorization context, enabling features like AuthorizeView.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Create HttpClient Delegating Handler for Token Management",
+            "description": "Implement a DelegatingHandler to automatically attach the JWT bearer token to the Authorization header of all outgoing API requests, and potentially handle token refresh logic.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "This handler intercepts every HttpRequestMessage sent by the configured HttpClient. It retrieves the stored token and adds it to the request headers. This centralizes token management, keeping API call sites clean. This handler must be registered in Program.cs as part of the HttpClient service configuration.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement Task List Component with Pagination and Filtering",
+        "description": "Develop the `TaskList.razor` component to display a list of tasks fetched from the API. Implement UI controls for server-side pagination, a search box with debouncing, and filters for status and assignee.",
+        "details": "The component should use the API client service to call `GET /api/tasks`. State for `page`, `pageSize`, `search`, etc., should be managed within the component. Use `@bind` with `OnInput` and a debounce mechanism (e.g., a timer) for the search box to avoid excessive API calls. The component should read the `X-Total-Count` header to calculate total pages for the pagination controls. Use CSS isolation for component-specific styles.",
+        "testStrategy": "Use bUnit to test the component's logic. Provide mock data and verify that the correct number of rows are rendered. Simulate user input for search and filters and assert that the API call parameters are updated correctly. Manually test the UI to ensure responsiveness and correct behavior of pagination and filtering controls.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Build Static Task List UI",
+            "description": "Create the basic static UI for the Task List component, including the table structure, headers, and placeholder rows for tasks. This should be a non-functional, visual representation.",
+            "dependencies": [],
+            "details": "Use HTML and CSS/Sass to structure the task list table with columns for task name, due date, priority, and status. Add placeholder content to visualize the final layout without any real data.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Fetch and Display Task Data",
+            "description": "Implement the logic to fetch task data from the API endpoint and display it within the Task List component, replacing the static placeholders.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use an HTTP client (e.g., fetch or axios) to make a GET request to the task API. Manage loading and error states. On successful fetch, map the received data to the task rows in the component's state and render them dynamically.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Implement Pagination Controls",
+            "description": "Add UI controls for pagination (e.g., 'Next', 'Previous', page numbers) and implement the logic to fetch and display different pages of task data from the API.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create pagination components and manage the current page state. When a user interacts with the pagination controls, trigger a new API request with the appropriate page query parameter and update the displayed task list.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Add Search and Filter Inputs with Debouncing",
+            "description": "Add input fields for searching and filtering the task list. Implement debouncing on the search input to prevent excessive API calls while the user is typing.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create input elements for search (text input) and filters (dropdowns for status, priority, etc.). Manage their state. Implement a debounce function for the search input to delay API calls until the user stops typing for a set duration (e.g., 300ms). Update the API request with search and filter query parameters to display the relevant tasks.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Create Task Detail, Edit, and Commenting Component",
+        "description": "Create the `TaskDetail.razor` component for creating, viewing, and editing tasks. Implement client-side and server-side validation using FluentValidation. Include support for adding and displaying comments with Markdown rendering.",
+        "details": "Use Blazor's `EditForm` component with a model. Install `FluentValidation.AspNetCore` for the server and `FluentValidation` for the client. Share validator classes in the `.Shared` project. For Markdown, use a library like `Markdig` on the server to sanitize and convert Markdown to HTML before displaying it, preventing XSS attacks. The comment section should be a separate component that fetches and posts comments related to the task.",
+        "testStrategy": "Use bUnit to test the form's behavior with valid and invalid data, ensuring validation messages are displayed. Manually test the end-to-end flow: create a task, edit it, add a comment with Markdown syntax (e.g., **bold**, *italic*), and verify it renders correctly and safely.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Develop the Blazor Component for Task Editing",
+            "description": "Create the main Blazor component (`EditForm`) for viewing and editing task details. This includes UI fields for title, description, due date, priority, and assignee, bound to a data model.",
+            "dependencies": [],
+            "details": "Build the UI layout using Blazor components. Bind the form fields to a data model representing the task. Do not implement validation or API calls in this step.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Implement Shared Client and Server-side Validation",
+            "description": "Set up FluentValidation for the task edit form. Create a shared validation library that can be used by both the Blazor client and the server-side API to ensure consistent validation rules.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a validator class for the task model using FluentValidation. Integrate it with the Blazor EditForm for client-side validation feedback. Ensure the same validator can be used on the server.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Create the Comment Submission Form Component",
+            "description": "Develop a separate Blazor component for users to write and submit new comments on a task. This form will include a text area for the comment content and a submit button.",
+            "dependencies": [
+              1
+            ],
+            "details": "Build a new Blazor component with an EditForm and a textarea for comment input. Create a model for the comment data. Implement basic form handling.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Display Comment List with Secure Markdown Rendering",
+            "description": "Implement the UI to display a list of existing comments for the task. This includes fetching the comments and rendering the comment content, which is in Markdown format, securely as HTML to prevent XSS.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a component to loop through and display a list of comments. Use a library like Markdig to convert Markdown to HTML. Sanitize the resulting HTML to prevent XSS attacks before rendering it.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "Integrate API Endpoints for Task and Comment Operations",
+            "description": "Connect all UI components to the backend API. Implement the logic to fetch task details, update tasks via the edit form, fetch the comment list, and submit new comments.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Implement HttpClient calls for: GET /api/tasks/{id}, PUT /api/tasks/{id}, GET /api/tasks/{id}/comments, and POST /api/tasks/{id}/comments. Wire these calls to the appropriate form submissions and component lifecycle events.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Implement Toast Notification System",
+        "description": "Implement a toast notification system to provide users with feedback on actions like saving a task or encountering an error. Notifications should be non-intrusive and automatically dismiss.",
+        "details": "Create a `NotificationService` as a singleton service to manage a list of toast messages. Create a `Notification.razor` component that subscribes to changes in the service and displays the toasts. Place this component in the `MainLayout.razor`. A popular and lightweight approach is to build a custom component using CSS for styling and transitions. Debounce logic can be added to prevent showing identical, repeated messages in quick succession.",
+        "testStrategy": "Trigger a success notification after a task is saved and an error notification on API failure. Verify that the toast appears with the correct message and style, and disappears after a few seconds. Test that multiple notifications stack correctly.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Develop Interactive Dashboard with Charts",
+        "description": "Implement the `Dashboard.razor` component to display interactive charts, such as a bar or pie chart showing task counts by status. Use a JavaScript charting library via JS interop.",
+        "details": "Use a library like `Chart.js`. A Blazor wrapper like `ChartJs.Blazor` (latest version) can simplify integration. The component will fetch aggregated task data from a new API endpoint (e.g., `GET /api/tasks/stats`). The component should call a JavaScript function via `IJSRuntime` to render or update the chart when data changes. Ensure the chart is responsive and accessible with proper labels and tooltips.",
+        "testStrategy": "Use bUnit to verify that the component fetches data and calls the JS interop with the correct parameters. Manually verify the chart renders correctly, tooltips work on hover, and the chart updates when underlying task data is modified in another browser tab (requires a refresh mechanism).",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create New API Endpoint for Statistics",
+            "description": "Develop and test a new API endpoint that aggregates and returns the necessary statistical data for the dashboard charts.",
+            "dependencies": [],
+            "details": "Define the data model for the statistics. Implement the controller and service logic to query the database, perform aggregations (e.g., counts, sums, averages over time), and serialize the data into a JSON format suitable for chart consumption. Ensure the endpoint is performant and secure.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Integrate Chart.js Library and Create JS Wrapper",
+            "description": "Add the Chart.js library to the Blazor project and create a JavaScript wrapper file to expose chart rendering functions that can be called from C#.",
+            "dependencies": [],
+            "details": "Include the Chart.js library script in the `_Host.cshtml` or `index.html` file. Create a new JavaScript file (e.g., `chartInterop.js`) in the `wwwroot` folder. In this file, define functions that accept chart configuration and data to initialize, update, and destroy Chart.js instances on specified canvas elements.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Build Blazor Dashboard Component with Data Fetching",
+            "description": "Create the main Blazor component for the dashboard, including the HTML layout and the logic to fetch data from the new statistics API endpoint.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a new Razor component (e.g., `Dashboard.razor`). Add the necessary HTML structure, including a `<canvas>` element for the chart. Implement the `OnInitializedAsync` lifecycle method to make an HTTP call to the new statistics API endpoint (from subtask 1) to fetch and store the chart data.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Implement JS Interop to Render Charts",
+            "description": "Use Blazor's JS Interop to call the JavaScript wrapper functions, passing the fetched data to render the charts on the dashboard component.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Inject `IJSRuntime` into the `Dashboard.razor` component. After fetching the data (in subtask 3), call the `InvokeVoidAsync` method to execute the JavaScript functions defined in `chartInterop.js` (from subtask 2). Pass the canvas element ID and the prepared chart data and configuration as arguments to the JavaScript function.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Implement CSV Export Functionality",
+        "description": "Create a server-side endpoint `/api/tasks/export` that streams a CSV file of the tasks matching the current filter criteria. The implementation must be efficient and handle large datasets without high memory consumption.",
+        "details": "The endpoint should accept the same query parameters as `GET /api/tasks`. Use `IAsyncEnumerable<Task>` and `yield return` to stream data from the database efficiently. Use a library like `CsvHelper` to write data directly to the `HttpContext.Response.Body` stream. Set the `Content-Type` header to `text/csv` and the `Content-Disposition` header to `attachment; filename=\"tasks.csv\"` to trigger a download.",
+        "testStrategy": "Write an integration test that calls the export endpoint and verifies the CSV content and headers. Perform a load test using a large dataset (e.g., 50k+ rows) to ensure low memory usage and acceptable download time (<5s as per PRD).",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Enhance Accessibility and Add Localization Support",
+        "description": "Implement accessibility (A11y) features across the application, including ARIA roles, keyboard navigation for interactive elements, and a high-contrast theme. Also, set up localization infrastructure.",
+        "details": "Review all interactive components (`<button>`, `<a>`, form inputs) to ensure they are keyboard-navigable and have proper focus indicators. Add `aria-label` attributes where necessary. Create an alternate `high-contrast.css` stylesheet that can be toggled. For localization, use .NET's `IStringLocalizer` service. Create resource files (`.resx`) for English (`en-US`) and a placeholder for French (`fr-FR`). Replace hardcoded UI strings with localized values.",
+        "testStrategy": "Use browser developer tools (e.g., Lighthouse Accessibility audit) to score the application. Manually test keyboard navigation through all major workflows. For localization, switch the app's culture and verify that UI strings change to the placeholder text.",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Conduct Accessibility Audit and Implement ARIA Roles",
+            "description": "Perform a comprehensive accessibility audit of the application to identify non-compliance with WCAG 2.1 AA standards. Remediate identified issues by implementing appropriate ARIA (Accessible Rich Internet Applications) roles, states, and properties.",
+            "dependencies": [],
+            "details": "Use automated tools like Axe and manual testing with screen readers (NVDA, VoiceOver) to audit all user-facing components. Document findings and systematically apply ARIA attributes like 'role', 'aria-label', and 'aria-live' to enhance semantic meaning for assistive technologies.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Implement Full Keyboard Navigation and Focus Management",
+            "description": "Ensure all interactive elements are fully accessible and operable using only a keyboard. This includes implementing a logical focus order and providing clear, visible focus indicators.",
+            "dependencies": [
+              1
+            ],
+            "details": "Refactor components to correctly handle keyboard events (Tab, Shift+Tab, Enter, Space, Arrow keys). Ensure the tab order follows the visual layout logically. Implement a custom, highly visible ':focus-visible' style for all focusable elements to improve usability for keyboard-only users.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Create and Integrate High-Contrast Theme",
+            "description": "Develop a high-contrast theme that meets WCAG AAA contrast ratio requirements (7:1 for text). Implement a user-facing control to allow switching between the standard and high-contrast themes.",
+            "dependencies": [
+              1
+            ],
+            "details": "Define a new set of CSS variables or a separate stylesheet for the high-contrast mode. Verify that all text, icons, and UI control boundaries meet the required contrast ratios. Add a toggle switch in the application settings to enable the theme and persist the user's choice.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Set Up .NET Localization Infrastructure and Refactor UI",
+            "description": "Configure the .NET localization framework, including resource files (.resx) and middleware. Refactor all UI components and backend messages to pull text from these resource files instead of using hardcoded strings.",
+            "dependencies": [],
+            "details": "Configure `IStringLocalizer` and request localization middleware in the application's startup. Create initial .resx files for English and at least one other language. Systematically replace all hardcoded strings in Razor views, Blazor components, and C# code with keys that reference the resource files.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Set Up Server-Side Logging and Health Checks",
+        "description": "Configure structured logging with Serilog for the API server, writing to both the console and a file. Implement a health checks endpoint (`/healthz`) to monitor database connectivity.",
+        "details": "Install `Serilog.AspNetCore`, `Serilog.Sinks.Console`, and `Serilog.Sinks.File`. Configure it in `Program.cs` to enrich logs with context like `RequestId`. Use `app.UseSerilogRequestLogging()`. For health checks, install `AspNetCore.HealthChecks.UI.Client` and `AspNetCore.HealthChecks.MySql`. Configure the `/healthz` endpoint to check the MySQL database connection. This endpoint will be used by AWS ECS for container health monitoring.",
+        "testStrategy": "Run the application and verify that structured logs are written to the console and a log file. Make an HTTP request and check for the corresponding request log. Access the `/healthz` endpoint and confirm it returns a `200 OK` status. Stop the MySQL container and verify the endpoint returns a `503 Service Unavailable` status.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Configure CI/CD Pipeline with GitHub Actions",
+        "description": "Create a CI/CD pipeline using GitHub Actions. The pipeline should build the solution, run all unit and integration tests (using Testcontainers for MySQL), and, on a push to the main branch, build and push Docker images to a container registry (e.g., Amazon ECR).",
+        "details": "Create a `.github/workflows/ci.yml` file. Define jobs for `build`, `test`, and `publish`. The `test` job should start a MySQL container using `services` context for the integration tests to run against. Use `dotnet test` with coverage collection. The `publish` job, triggered on `main` branch pushes, will use the `aws-actions/amazon-ecr-login` action to authenticate with ECR and `docker/build-push-action` to build and push the server image.",
+        "testStrategy": "Create a pull request to trigger the CI pipeline. Verify that all build and test steps pass. Merge the PR and confirm that the Docker image is successfully pushed to the specified container registry with the correct tag.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up Basic Build and Test Workflow",
+            "description": "Create the initial CI/CD pipeline configuration file. Define jobs to checkout code, install dependencies, and run unit tests on every push to the main branches.",
+            "dependencies": [],
+            "details": "Define the pipeline trigger events (e.g., on push to `main`, on pull requests). Add steps for `actions/checkout`, setting up the programming language environment (e.g., `setup-node`, `setup-python`), caching dependencies, and executing the unit test command (e.g., `npm test`, `pytest`).",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Configure Service Containers for Integration Testing",
+            "description": "Enhance the test job by adding a service container (e.g., PostgreSQL, Redis) to allow for running integration tests against a live database or cache.",
+            "dependencies": [
+              1
+            ],
+            "details": "Modify the pipeline configuration to include a `services` block. Define the service container image, ports, and any necessary environment variables or health checks. Update the integration test job to connect to this service container using the provided hostname and ports.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Configure AWS Authentication Secrets",
+            "description": "Securely store AWS credentials in the CI/CD platform's secret management system to enable authentication with AWS services like ECR.",
+            "dependencies": [],
+            "details": "Create an IAM user or role with permissions to push to ECR. Generate access keys or configure an OIDC provider. Add the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (or configure the OIDC role) as encrypted secrets in the repository or organization settings.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Add Docker Build and Push to ECR Job",
+            "description": "Create a new job in the pipeline that builds a Docker image from the application's Dockerfile and pushes it to Amazon Elastic Container Registry (ECR).",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Add a new job that runs after the test job succeeds. Use an action like `aws-actions/configure-aws-credentials` to log in. Add steps to log in to the ECR registry, build the Docker image using `docker build`, tag it appropriately (e.g., with the Git SHA), and push it using `docker push`.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "Add Deployment Job",
+            "description": "Implement a deployment job that triggers after the Docker image is successfully pushed, deploying the new image to a target environment like Amazon ECS.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create a final job in the workflow, conditioned on a specific trigger (e.g., push to `main` branch). This job will use the newly pushed Docker image from ECR. It will involve steps to update a service definition (e.g., an ECS task definition) and trigger a new deployment to update the running service.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Implement Client-Side Offline Support via Service Worker",
+        "description": "Implement offline support for the Blazor WASM client using a Service Worker. The Service Worker should cache application assets and the last successful API responses for key data, allowing the user to view previously loaded tasks while offline.",
+        "details": "Start with the default Blazor PWA template's `service-worker.js` and `service-worker.published.js`. Modify the `onFetch` event handler to implement a 'cache-first, then network' strategy for API GET requests (e.g., `/api/tasks`). When an API call succeeds, update the cache. When offline, serve the response from the cache. Add a UI indicator in the `MainLayout.razor` that shows the online/offline status using JavaScript interop to listen to browser `online` and `offline` events.",
+        "testStrategy": "Load the application, then use browser developer tools to switch to offline mode. Verify that you can still navigate to the task list and see the last loaded data. Check the 'Cache Storage' in dev tools to see the cached API responses. Go back online and verify the app syncs with fresh data.",
+        "priority": "low",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create and Register Service Worker",
+            "description": "Create the initial service worker file (e.g., `service-worker.js`) and add the registration logic to the main application script to install it in the browser.",
+            "dependencies": [],
+            "details": "The registration script should check for service worker support in the browser. The service worker file itself will initially be a placeholder but should include basic lifecycle event listeners (install, activate, fetch) to build upon.",
+            "status": "pending"
+          },
+          {
+            "id": 2,
+            "title": "Implement Cache-First Strategy for API GET Requests",
+            "description": "Add a 'fetch' event listener to the service worker. For API GET requests, implement logic to first check the cache for a response. If a cached response exists, serve it immediately. If not, proceed to the network.",
+            "dependencies": [
+              1
+            ],
+            "details": "Define a specific cache name for API data. The fetch event handler will need to intercept outgoing requests, identify GET requests to the API, and attempt to match them against the cache using `caches.match()`.",
+            "status": "pending"
+          },
+          {
+            "id": 3,
+            "title": "Update Cache on Successful Network Calls",
+            "description": "Extend the fetch event listener to update the cache with fresh data whenever a network request for an API GET call is successful.",
+            "dependencies": [
+              2
+            ],
+            "details": "After a successful network fetch (i.e., when the cache is missed), the response should be cloned and stored in the cache using `cache.put()`. This ensures the cache is updated with the latest data for subsequent offline use.",
+            "status": "pending"
+          },
+          {
+            "id": 4,
+            "title": "Add UI Indicator for Connectivity Status",
+            "description": "Create a visual component in the UI that indicates whether the application is currently online or offline. This component should react to changes in the browser's connectivity status.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use the `navigator.onLine` property and listen for 'online' and 'offline' window events to toggle the state of the UI indicator. The indicator could be a simple banner, a toast notification, or an icon that provides clear feedback to the user.",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "title": "AI Feature: Natural-Language Task Creation",
+        "description": "Implement the 'Natural-Language Task Creation' feature. A user types a phrase like 'Review Q3 report with Alice by next Friday', and the system creates a structured task.",
+        "details": "Create a new API endpoint, e.g., `POST /api/tasks/parse-natural-language`. This endpoint will use the `Azure.AI.OpenAI` NuGet package (v1.0.0-beta.* or later). Prompt the LLM with a system message instructing it to extract Title, Description, Assignee, and DueDate from user input and return a JSON object. The Blazor client will have a text input that calls this endpoint. On success, it will pre-populate the task creation form (`TaskDetail.razor`) with the parsed data. Store the OpenAI API key securely using AWS Secrets Manager.",
+        "testStrategy": "Write unit tests for the API endpoint, mocking the OpenAI client to test the parsing logic. Test with various phrases: with/without due dates, with/without assignees, complex descriptions. Acceptance criteria: ≥90% accuracy in parsing these fields correctly in a predefined test set. UI latency for the call should be <1s.",
+        "priority": "low",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Dark/Light Mode Theme Toggle",
+        "description": "Implement a dark/light mode toggle that respects the user's OS preference (`prefers-color-scheme`) by default but allows manual override. The selected theme should persist across sessions.",
+        "details": "Use CSS variables for colors (e.g., `--background-color`, `--text-color`). Define default values in `:root` and override them in a `[data-theme='dark']` selector. Use a small JS interop function to check `window.matchMedia('(prefers-color-scheme: dark)').matches` and to get/set the theme preference in `localStorage`. A Blazor component will call this JS, manage the state, and apply the `data-theme` attribute to the `<html>` or `<body>` element.",
+        "testStrategy": "Verify the app loads in the correct theme based on OS settings. Manually toggle the theme and confirm the UI changes instantly. Refresh the page and verify the selected theme persists from `localStorage`. Check color contrast ratios for both themes using browser dev tools to ensure they meet WCAG AA standards.",
+        "priority": "low",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-06-29T18:19:11.941Z",
+      "updated": "2025-06-29T18:29:22.119Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

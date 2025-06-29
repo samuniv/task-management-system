@@ -1,0 +1,141 @@
+{
+	"meta": {
+		"generatedAt": "2025-06-29T18:20:33.532Z",
+		"tasksAnalyzed": 16,
+		"totalTasks": 16,
+		"analysisCount": 16,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Project Scaffolding and Docker Environment Setup",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down the 'Project Scaffolding and Docker Environment Setup' task into subtasks for creating the .NET solution structure, authoring the server's Dockerfile, and configuring the docker-compose.yml file for the API and MySQL services.",
+			"reasoning": "This task uses standard templates and well-documented Docker images. The complexity is low as it primarily involves configuration and boilerplate code rather than complex logic."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Define Data Models and Set Up EF Core",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Expand the 'Define Data Models and Set Up EF Core' task into subtasks for defining the User, Task, and Comment entities; configuring the DbContext with entity relationships; creating the initial database migration; and implementing a DbInitializer to seed sample data.",
+			"reasoning": "Involves multiple distinct steps: data modeling, ORM configuration, database schema management (migrations), and initial data seeding. Each step is relatively simple but they build on each other, increasing coordination complexity."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implement API Authentication and Authorization",
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the 'Implement API Authentication and Authorization' task into subtasks for configuring ASP.NET Core Identity, implementing JWT generation and validation, creating the refresh token mechanism, defining role-based authorization policies, and integrating with AWS Secrets Manager for secrets.",
+			"reasoning": "This is a highly complex, security-sensitive task involving multiple technologies (Identity, JWT, cookies, AWS Secrets Manager) and concepts (refresh tokens, rate limiting) that must work together perfectly."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Develop Core Task CRUD API Endpoints",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Expand the 'Develop Core Task CRUD API Endpoints' task into subtasks for each CRUD operation (Create, Read, Update, Delete), with a specific subtask for implementing the advanced server-side pagination, filtering, and sorting logic for the GET endpoint.",
+			"reasoning": "Complexity is elevated by the requirements for dynamic server-side querying (pagination, filtering) and implementing PATCH semantics with JsonPatch, which are significantly more involved than basic CRUD operations."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Blazor Client Setup and Authentication State Management",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the 'Blazor Client Setup and Authentication State Management' task into subtasks for creating the main layout and API client, implementing the AuthService, setting up the authentication state provider, and creating the HttpClient delegating handler for automatic token management.",
+			"reasoning": "Involves several core Blazor concepts and a complex, asynchronous pattern (delegating handler for token refresh) that is critical for a good user experience and can be tricky to implement correctly."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement Task List Component with Pagination and Filtering",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Expand the 'Implement Task List Component' task into subtasks for building the static UI, fetching and displaying data from the API, implementing the pagination controls, and adding the interactive search and filter inputs with debouncing.",
+			"reasoning": "This task combines UI development with asynchronous data fetching and state management. Implementing responsive and efficient controls for pagination, filtering, and debounced search requires careful handling of component state and lifecycle events."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Create Task Detail, Edit, and Commenting Component",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the 'Create Task Detail, Edit, and Commenting Component' task into subtasks for implementing the main EditForm, setting up shared FluentValidation, creating the comment submission form, displaying the list of comments with secure Markdown rendering, and integrating all API calls.",
+			"reasoning": "This task integrates multiple complex features: Blazor forms, shared client/server validation, a nested component for comments, and security-sensitive HTML rendering from Markdown, requiring significant coordination."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Implement Toast Notification System",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Expand the 'Implement Toast Notification System' task into subtasks for creating the singleton NotificationService, building the UI component to display toasts, and integrating calls to the service from other components upon success or error.",
+			"reasoning": "While a common UI pattern, implementing it from scratch in Blazor requires correctly managing state across the application via a shared service and ensuring the UI component re-renders correctly on events, which has moderate complexity."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Develop Interactive Dashboard with Charts",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the 'Develop Interactive Dashboard with Charts' task into subtasks for creating the new API endpoint for statistics, integrating the Chart.js library via a wrapper, building the Blazor component to fetch data, and implementing the JS interop calls to render the chart.",
+			"reasoning": "The core challenge is the integration with a JavaScript library via JS Interop, which can be complex to set up and debug. It also requires backend work to create an efficient data aggregation endpoint."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Implement CSV Export Functionality",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Expand the 'Implement CSV Export Functionality' task into subtasks for creating the API endpoint, implementing the database query to stream results using IAsyncEnumerable, and using a CSV library to write the streamed data directly to the HTTP response.",
+			"reasoning": "The complexity is not in generating a CSV, but in doing so efficiently for large datasets by streaming directly from the database to the HTTP response without loading everything into memory, which requires knowledge of advanced C# features."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Enhance Accessibility and Add Localization Support",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the 'Enhance Accessibility and Add Localization Support' task into subtasks for a full accessibility review and remediation (ARIA, keyboard nav), implementing a high-contrast theme, setting up the .NET localization infrastructure, and refactoring all UI components to use localized strings.",
+			"reasoning": "This task has a wide-ranging impact across the entire codebase. Both accessibility and localization require specialized knowledge and a systematic, detailed approach to implementation and testing, making it a complex undertaking."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Set Up Server-Side Logging and Health Checks",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Expand the 'Set Up Server-Side Logging and Health Checks' task into subtasks for configuring structured logging with Serilog, implementing the main health check endpoint, and adding a specific check for database connectivity.",
+			"reasoning": "This involves integrating and configuring standard libraries. While not complex logic, it requires knowledge of modern observability practices (e.g., structured logging) and their configuration in ASP.NET Core."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Configure CI/CD Pipeline with GitHub Actions",
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the 'Configure CI/CD Pipeline' task into subtasks for setting up the basic build and test jobs, configuring a service container for integration testing, adding a job to build and push Docker images to ECR, and managing secrets for AWS authentication.",
+			"reasoning": "CI/CD pipeline development is a specialized skill. This task involves multiple stages, service dependencies for testing (Testcontainers), and secure deployment to a cloud registry, making it highly complex and time-consuming to debug."
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "Implement Client-Side Offline Support via Service Worker",
+			"complexityScore": 9,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Expand the 'Implement Client-Side Offline Support' task into subtasks for registering the service worker, implementing a cache-first fetch strategy for API GET requests, creating logic to update the cache upon successful network calls, and adding a UI indicator for connectivity status.",
+			"reasoning": "Service workers operate on a separate thread and have a complex lifecycle. Implementing a robust caching strategy and debugging its behavior is one of the more advanced and error-prone topics in web development."
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "AI Feature: Natural-Language Task Creation",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the 'AI Feature: Natural-Language Task Creation' task into subtasks for creating the backend API endpoint, integrating the OpenAI client and designing the prompt, building the client-side UI for input, and handling the parsed JSON response to pre-populate the task form.",
+			"reasoning": "The challenge lies not in the code to call an API, but in prompt engineering to get reliable, structured output from an LLM and handling its variable responses. It also introduces a new, critical external dependency."
+		},
+		{
+			"taskId": 16,
+			"taskTitle": "Implement Dark/Light Mode Theme Toggle",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Expand the 'Implement Dark/Light Mode Theme Toggle' task into subtasks for refactoring the CSS to use variables, creating the dark theme styles, writing the JavaScript interop for theme management, and building the Blazor UI toggle component.",
+			"reasoning": "This task requires coordination between CSS, JavaScript, and Blazor. While the individual parts are simple, ensuring they work together seamlessly (respecting OS preference, allowing override, persisting choice) adds moderate complexity."
+		}
+	]
+}
