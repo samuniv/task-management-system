@@ -6,17 +6,23 @@ public interface IThemeService
 {
     event EventHandler<string>? ThemeChanged;
     Task<string> GetCurrentThemeAsync();
+    Task<string> GetEffectiveThemeAsync();
     Task SetThemeAsync(string theme);
+    Task ToggleThemeAsync();
     Task ToggleHighContrastAsync();
     Task<bool> IsHighContrastActiveAsync();
+    Task<bool> IsDarkModeActiveAsync();
+    Task<bool> IsSystemManagedAsync();
     Task InitializeThemeAsync();
+    Task<object[]> GetAvailableThemesAsync();
+    Task ResetToSystemPreferenceAsync();
 }
 
 public class ThemeService : IThemeService
 {
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<ThemeService> _logger;
-    private string _currentTheme = "default";
+    private string _currentTheme = "auto";
 
     public event EventHandler<string>? ThemeChanged;
 
@@ -31,13 +37,27 @@ public class ThemeService : IThemeService
         try
         {
             var theme = await _jsRuntime.InvokeAsync<string>("themeManager.getCurrentTheme");
-            _currentTheme = theme ?? "default";
+            _currentTheme = theme ?? "auto";
             return _currentTheme;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to get current theme");
-            return "default";
+            return "auto";
+        }
+    }
+
+    public async Task<string> GetEffectiveThemeAsync()
+    {
+        try
+        {
+            var effectiveTheme = await _jsRuntime.InvokeAsync<string>("themeManager.getEffectiveTheme");
+            return effectiveTheme ?? "light";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get effective theme");
+            return "light";
         }
     }
 
@@ -60,13 +80,31 @@ public class ThemeService : IThemeService
         }
     }
 
+    public async Task ToggleThemeAsync()
+    {
+        try
+        {
+            var newTheme = await _jsRuntime.InvokeAsync<string>("themeManager.toggleTheme");
+            _currentTheme = newTheme;
+            ThemeChanged?.Invoke(this, newTheme);
+            
+            _logger.LogInformation("Theme toggled to: {Theme}", newTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle theme");
+        }
+    }
+
     public async Task ToggleHighContrastAsync()
     {
         try
         {
-            var currentTheme = await GetCurrentThemeAsync();
-            var newTheme = currentTheme == "high-contrast" ? "default" : "high-contrast";
-            await SetThemeAsync(newTheme);
+            var newTheme = await _jsRuntime.InvokeAsync<string>("themeManager.toggleHighContrast");
+            _currentTheme = newTheme;
+            ThemeChanged?.Invoke(this, newTheme);
+            
+            _logger.LogInformation("High contrast toggled to: {Theme}", newTheme);
         }
         catch (Exception ex)
         {
@@ -78,13 +116,67 @@ public class ThemeService : IThemeService
     {
         try
         {
-            var theme = await GetCurrentThemeAsync();
-            return theme == "high-contrast";
+            return await _jsRuntime.InvokeAsync<bool>("themeManager.userPrefersHighContrast");
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to check if high contrast is active");
             return false;
+        }
+    }
+
+    public async Task<bool> IsDarkModeActiveAsync()
+    {
+        try
+        {
+            return await _jsRuntime.InvokeAsync<bool>("themeManager.userPrefersDarkMode");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check if dark mode is active");
+            return false;
+        }
+    }
+
+    public async Task<bool> IsSystemManagedAsync()
+    {
+        try
+        {
+            return await _jsRuntime.InvokeAsync<bool>("themeManager.isSystemManaged");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check if theme is system managed");
+            return false;
+        }
+    }
+
+    public async Task<object[]> GetAvailableThemesAsync()
+    {
+        try
+        {
+            return await _jsRuntime.InvokeAsync<object[]>("themeManager.getAvailableThemes");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get available themes");
+            return Array.Empty<object>();
+        }
+    }
+
+    public async Task ResetToSystemPreferenceAsync()
+    {
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("themeManager.resetToSystemPreference");
+            _currentTheme = "auto";
+            ThemeChanged?.Invoke(this, "auto");
+            
+            _logger.LogInformation("Theme reset to system preference");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reset theme to system preference");
         }
     }
 

@@ -1,23 +1,21 @@
-using Azure.AI.OpenAI;
 using BlazorWasm.Shared.DTOs;
 using BlazorWasm.Shared.Enums;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using OpenAI.Chat;
+using Microsoft.Extensions.Logging;
 
 namespace BlazorWasm.Server.Services;
 
-public class AzureOpenAITaskParsingService : IAITaskParsingService
+public class GoogleGeminiTaskParsingService : IAITaskParsingService
 {
-    private readonly ChatClient _chatClient;
-    private readonly ILogger<AzureOpenAITaskParsingService> _logger;
-    private readonly string _deploymentName;
+    private readonly dynamic _model;
+    private readonly ILogger<GoogleGeminiTaskParsingService> _logger;
 
-    public AzureOpenAITaskParsingService(AzureOpenAIClient azureOpenAIClient, ILogger<AzureOpenAITaskParsingService> logger, IConfiguration configuration)
+    public GoogleGeminiTaskParsingService(dynamic googleAI, ILogger<GoogleGeminiTaskParsingService> logger, IConfiguration configuration)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _deploymentName = configuration["AI:AzureOpenAI:DeploymentName"] ?? "gpt-35-turbo";
-        _chatClient = azureOpenAIClient?.GetChatClient(_deploymentName) ?? throw new ArgumentNullException(nameof(azureOpenAIClient));
+        var modelName = configuration["AI:GoogleGemini:ModelName"] ?? "models/gemini-1.5-flash";
+        _model = googleAI?.CreateGenerativeModel(modelName) ?? throw new ArgumentNullException(nameof(googleAI));
     }
 
     public async Task<ParsedTaskResult> ParseNaturalLanguageAsync(string naturalLanguageInput)
@@ -29,7 +27,7 @@ public class AzureOpenAITaskParsingService : IAITaskParsingService
 
         try
         {
-            _logger.LogInformation("Parsing natural language input: {Input}", naturalLanguageInput);
+            _logger.LogInformation("Parsing natural language input with Google Gemini: {Input}", naturalLanguageInput);
 
             var systemPrompt = @"You are a task management assistant. Parse the user's input and extract structured task information.
 
@@ -49,23 +47,27 @@ Output: {""title"": ""Fix the login bug"", ""description"": ""Urgent fix needed 
 
 Only return valid JSON, no other text.";
 
-            var messages = new List<ChatMessage>
+            var prompt = $"{systemPrompt}\n\nUser input: {naturalLanguageInput}";
+
+            var response = await _model.GenerateContentAsync(prompt);
+            var content = response.Text();
+
+            if (_logger.IsEnabled(LogLevel.Debug))
             {
-                new SystemChatMessage(systemPrompt),
-                new UserChatMessage(naturalLanguageInput)
-            };
+                Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(_logger, "Google Gemini response: {Response}", content);
+            }
 
-            var chatCompletionOptions = new ChatCompletionOptions
+            // Clean up the response text (remove markdown formatting if present)
+            content = content.Trim();
+            if (content.StartsWith("```json"))
             {
-                Temperature = 0.3f, // Lower temperature for more consistent structured output
-                FrequencyPenalty = 0,
-                PresencePenalty = 0
-            };
-
-            var response = await _chatClient.CompleteChatAsync(messages, chatCompletionOptions);
-            var content = response.Value.Content[0].Text;
-
-            _logger.LogDebug("OpenAI response: {Response}", content);
+                content = content.Substring(7);
+            }
+            if (content.EndsWith("```"))
+            {
+                content = content.Substring(0, content.Length - 3);
+            }
+            content = content.Trim();
 
             // Parse the JSON response
             var jsonDocument = JsonDocument.Parse(content);
@@ -74,12 +76,12 @@ Only return valid JSON, no other text.";
             var result = new ParsedTaskResult
             {
                 IsSuccess = true,
-                Title = root.TryGetProperty("title", out var titleProp) ? titleProp.GetString() ?? string.Empty : string.Empty,
-                Description = root.TryGetProperty("description", out var descProp) ? descProp.GetString() ?? string.Empty : string.Empty,
-                Assignee = root.TryGetProperty("assignee", out var assigneeProp) ? assigneeProp.GetString() ?? string.Empty : string.Empty,
-                Priority = ParsePriority(root.TryGetProperty("priority", out var priorityProp) ? priorityProp.GetString() : "Medium"),
-                DueDate = ParseDueDate(root.TryGetProperty("dueDate", out var dueDateProp) ? dueDateProp.GetString() : string.Empty),
-                ConfidenceScore = 0.9
+                Title = root.TryGetProperty("title", out JsonElement titleProp) ? titleProp.GetString() ?? string.Empty : string.Empty,
+                Description = root.TryGetProperty("description", out JsonElement descProp) ? descProp.GetString() ?? string.Empty : string.Empty,
+                Assignee = root.TryGetProperty("assignee", out JsonElement assigneeProp) ? assigneeProp.GetString() ?? string.Empty : string.Empty,
+                Priority = ParsePriority(root.TryGetProperty("priority", out JsonElement priorityProp) ? priorityProp.GetString() : "Medium"),
+                DueDate = ParseDueDate(root.TryGetProperty("dueDate", out JsonElement dueDateProp) ? dueDateProp.GetString() : string.Empty),
+                ConfidenceScore = 0.9 // High confidence for Gemini responses
             };
 
             // Fallback to title if empty
@@ -88,17 +90,17 @@ Only return valid JSON, no other text.";
                 result.Title = TruncateToTitle(naturalLanguageInput);
             }
 
-            _logger.LogInformation("Successfully parsed task: {Title}", result.Title);
+            _logger.LogInformation("Successfully parsed task with Google Gemini: {Title}", result.Title);
             return result;
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to parse OpenAI JSON response, falling back to rule-based parsing");
+            _logger.LogWarning(ex, "Failed to parse Google Gemini JSON response, falling back to rule-based parsing");
             return FallbackToRuleBasedParsing(naturalLanguageInput);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling OpenAI API, falling back to rule-based parsing");
+            _logger.LogError(ex, "Error calling Google Gemini API, falling back to rule-based parsing");
             return FallbackToRuleBasedParsing(naturalLanguageInput);
         }
     }
@@ -132,7 +134,7 @@ Only return valid JSON, no other text.";
 
     private static string TruncateToTitle(string input)
     {
-        // Take first 50 characters as title if OpenAI fails
+        // Take first 50 characters as title if Gemini fails
         if (input.Length <= 50)
             return input;
 
@@ -148,7 +150,7 @@ Only return valid JSON, no other text.";
         var result = new ParsedTaskResult
         {
             IsSuccess = true,
-            ConfidenceScore = 0.5
+            ConfidenceScore = 0.5 // Lower confidence for fallback
         };
 
         // Extract assignee patterns

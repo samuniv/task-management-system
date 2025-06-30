@@ -1,8 +1,146 @@
 @import url("open-iconic/font/css/open-iconic-bootstrap.min.css");
 
+/* Light Theme (Default) CSS Variables */
+:root {
+    /* Primary colors - Light theme */
+    --primary-color: #1b6ec2;
+    --secondary-color: #6c757d;
+    --background-color: #ffffff;
+    --surface-color: #f8f9fa;
+    --text-color: #212529;
+    --text-secondary: #6c757d;
+    
+    /* Interactive elements */
+    --link-color: #0071c1;
+    --link-hover: #005a9e;
+    --link-visited: #6f42c1;
+    
+    /* Buttons */
+    --button-primary-bg: #1b6ec2;
+    --button-primary-text: #ffffff;
+    --button-primary-border: #1861ac;
+    --button-primary-hover-bg: #1861ac;
+    --button-primary-hover-text: #ffffff;
+    
+    --button-secondary-bg: #6c757d;
+    --button-secondary-text: #ffffff;
+    --button-secondary-border: #6c757d;
+    --button-secondary-hover-bg: #545b62;
+    --button-secondary-hover-text: #ffffff;
+    
+    --button-success-bg: #198754;
+    --button-success-text: #ffffff;
+    --button-danger-bg: #dc3545;
+    --button-danger-text: #ffffff;
+    --button-warning-bg: #ffc107;
+    --button-warning-text: #000000;
+    
+    /* Form elements */
+    --input-bg: #ffffff;
+    --input-text: #212529;
+    --input-border: #ced4da;
+    --input-border-focus: #86b7fe;
+    --input-placeholder: #6c757d;
+    
+    /* Status and priority colors */
+    --status-pending: #ffc107;
+    --status-in-progress: #0dcaf0;
+    --status-done: #198754;
+    --status-cancelled: #dc3545;
+    
+    --priority-low: #198754;
+    --priority-medium: #ffc107;
+    --priority-high: #fd7e14;
+    --priority-critical: #dc3545;
+    
+    /* Borders and separators */
+    --border-color: #dee2e6;
+    --border-light: #e9ecef;
+    --divider-color: #dee2e6;
+    
+    /* Focus indicators */
+    --focus-color: #258cfb;
+    --focus-background: #ffffff;
+    --focus-text: #212529;
+    --focus-border: #258cfb;
+    --focus-shadow: rgba(13, 110, 253, 0.25);
+    
+    /* Hover states */
+    --hover-background: #e9ecef;
+    --hover-text: #212529;
+    
+    /* Selection */
+    --selection-bg: #0d6efd;
+    --selection-text: #ffffff;
+    
+    /* Charts */
+    --chart-bg: #ffffff;
+    --chart-text: #212529;
+    --chart-grid: #dee2e6;
+    
+    /* Navigation */
+    --nav-bg: #f7f7f7;
+    --nav-text: #212529;
+    --nav-border: #d6d5d5;
+    --nav-active-bg: #0d6efd;
+    --nav-active-text: #ffffff;
+    
+    /* Cards and panels */
+    --card-bg: #ffffff;
+    --card-border: #dee2e6;
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    
+    /* Tables */
+    --table-bg: #ffffff;
+    --table-stripe: #f8f9fa;
+    --table-border: #dee2e6;
+    --table-header-bg: #e9ecef;
+    --table-header-text: #212529;
+    
+    /* Notifications */
+    --alert-success-bg: #d1e7dd;
+    --alert-success-text: #0f5132;
+    --alert-success-border: #badbcc;
+    
+    --alert-danger-bg: #f8d7da;
+    --alert-danger-text: #721c24;
+    --alert-danger-border: #f5c2c7;
+    
+    --alert-warning-bg: #fff3cd;
+    --alert-warning-text: #664d03;
+    --alert-warning-border: #ffecb5;
+    
+    --alert-info-bg: #d1ecf1;
+    --alert-info-text: #055160;
+    --alert-info-border: #b6effb;
+    
+    /* Loading indicators */
+    --spinner-color: #0d6efd;
+    --progress-bg: #e9ecef;
+    --progress-fill: #0d6efd;
+}
+
+/* Auto theme - respects system preference */
+:root[data-theme="auto"] {
+    /* Use system preference for colors */
+    --primary-color: var(--system-primary-color, #1b6ec2);
+    --background-color: var(--system-background-color, #ffffff);
+    --text-color: var(--system-text-color, #212529);
+}
+
+/* Light theme explicit override */
+:root[data-theme="light"] {
+    /* Ensure light theme variables are used */
+    --background-color: #ffffff;
+    --text-color: #212529;
+}
+
 html,
 body {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1:focus {
@@ -11,13 +149,13 @@ h1:focus {
 
 a,
 .btn-link {
-  color: #0071c1;
+  color: var(--link-color);
 }
 
 .btn-primary {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+  color: var(--button-primary-text);
+  background-color: var(--button-primary-bg);
+  border-color: var(--button-primary-border);
 }
 
 .btn:focus,
@@ -25,7 +163,7 @@ a,
 .btn-link.nav-link:focus,
 .form-control:focus,
 .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem var(--focus-background), 0 0 0 0.25rem var(--focus-shadow);
 }
 
 .content {
@@ -41,11 +179,13 @@ a,
 }
 
 .validation-message {
-  color: red;
+  color: var(--alert-danger-text);
 }
 
 #blazor-error-ui {
-  background: lightyellow;
+  background: var(--alert-warning-bg);
+  color: var(--alert-warning-text);
+  border-top: 2px solid var(--alert-warning-border);
   bottom: 0;
   box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
   display: none;
@@ -78,8 +218,8 @@ main {
 }
 
 .top-row {
-  background-color: #f7f7f7;
-  border-bottom: 1px solid #d6d5d5;
+  background-color: var(--nav-bg);
+  border-bottom: 1px solid var(--nav-border);
   justify-content: flex-end;
   height: 3.5rem;
   display: flex;

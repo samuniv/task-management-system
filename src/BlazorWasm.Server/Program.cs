@@ -131,40 +131,12 @@ builder.Services.AddAuthorization(options =>
 // Register services
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// Configure Azure OpenAI services
-builder.Services.AddSingleton<AzureOpenAIClient>(serviceProvider =>
-{
-    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-    var apiKey = configuration["AzureOpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
-    var endpoint = configuration["AzureOpenAI:Endpoint"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
-    
-    if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(endpoint))
-    {
-        // Log warning but don't fail startup - fallback to mock service
-        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning("Azure OpenAI credentials not configured. Using mock AI service for development.");
-        return null!;
-    }
-    
-    return new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(apiKey));
-});
-
-// Register AI parsing service - use Azure OpenAI if available, otherwise mock
+// Register AI provider factory and services
+builder.Services.AddScoped<IAIProviderFactory, AIProviderFactory>();
 builder.Services.AddScoped<IAITaskParsingService>(serviceProvider =>
 {
-    var azureOpenAIClient = serviceProvider.GetService<AzureOpenAIClient>();
-    if (azureOpenAIClient != null)
-    {
-        var logger = serviceProvider.GetRequiredService<ILogger<AzureOpenAITaskParsingService>>();
-        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        return new AzureOpenAITaskParsingService(azureOpenAIClient, logger, configuration);
-    }
-    else
-    {
-        // Fallback to mock service for development
-        var logger = serviceProvider.GetRequiredService<ILogger<MockAITaskParsingService>>();
-        return new MockAITaskParsingService(logger);
-    }
+    var factory = serviceProvider.GetRequiredService<IAIProviderFactory>();
+    return factory.CreateTaskParsingService();
 });
 
 // Add Health Checks

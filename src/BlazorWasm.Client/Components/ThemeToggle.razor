@@ -5,9 +5,9 @@
 @implements IDisposable
 
 <button type="button" 
-        class="btn btn-outline-secondary theme-toggle-button @(IsHighContrast ? "active" : "")"
+        class="btn btn-outline-secondary theme-toggle-button @(GetActiveClass())"
         @onclick="ToggleTheme"
-        aria-pressed="@IsHighContrast.ToString().ToLower()"
+        aria-pressed="@GetAriaPressed()"
         aria-label="@GetAriaLabel()"
         title="@GetTooltip()">
     
@@ -30,7 +30,7 @@
     @if (ShowKeyboardShortcut)
     {
         <span class="keyboard-shortcut ms-1">
-            <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>
+            <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>
         </span>
     }
 </button>
@@ -41,8 +41,17 @@
     [Parameter] public string CssClass { get; set; } = "";
     [Parameter] public EventCallback<string> OnThemeChanged { get; set; }
 
-    private bool IsHighContrast { get; set; } = false;
+    private string CurrentTheme { get; set; } = "auto";
+    private string EffectiveTheme { get; set; } = "light";
     private bool IsLoading { get; set; } = false;
+
+    private readonly Dictionary<string, ThemeInfo> _themeInfo = new()
+    {
+        { "auto", new ThemeInfo("Auto", "fa-circle-half-stroke", "Follow system preference") },
+        { "light", new ThemeInfo("Light", "fa-sun", "Light theme") },
+        { "dark", new ThemeInfo("Dark", "fa-moon", "Dark theme") },
+        { "high-contrast", new ThemeInfo("High Contrast", "fa-adjust", "High contrast for accessibility") }
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,14 +79,13 @@
 
         try
         {
-            await ThemeService.ToggleHighContrastAsync();
+            await ThemeService.ToggleThemeAsync();
             await UpdateThemeState();
             
             // Notify parent component
             if (OnThemeChanged.HasDelegate)
             {
-                var currentTheme = await ThemeService.GetCurrentThemeAsync();
-                await OnThemeChanged.InvokeAsync(currentTheme);
+                await OnThemeChanged.InvokeAsync(CurrentTheme);
             }
         }
         catch (Exception ex)
@@ -96,7 +104,8 @@
     {
         try
         {
-            IsHighContrast = await ThemeService.IsHighContrastActiveAsync();
+            CurrentTheme = await ThemeService.GetCurrentThemeAsync();
+            EffectiveTheme = await ThemeService.GetEffectiveThemeAsync();
             StateHasChanged();
         }
         catch (Exception ex)
@@ -115,39 +124,63 @@
 
     private string GetButtonText()
     {
-        return IsHighContrast 
-            ? LocalizationService.GetString("Accessibility.DefaultTheme") 
-            : LocalizationService.GetString("Accessibility.HighContrast");
+        if (_themeInfo.TryGetValue(CurrentTheme, out var themeInfo))
+        {
+            return themeInfo.Label;
+        }
+        return "Theme";
     }
 
     private string GetIconClass()
     {
-        return IsHighContrast ? "fa-sun" : "fa-adjust";
+        if (_themeInfo.TryGetValue(CurrentTheme, out var themeInfo))
+        {
+            return themeInfo.Icon;
+        }
+        return "fa-circle";
     }
 
     private string GetAriaLabel()
     {
-        return IsHighContrast 
-            ? LocalizationService.GetString("Accessibility.SwitchToDefaultTheme")
-            : LocalizationService.GetString("Accessibility.SwitchToHighContrast");
+        var currentLabel = _themeInfo.TryGetValue(CurrentTheme, out var themeInfo) ? themeInfo.Label : "Unknown";
+        return $"Current theme: {currentLabel}. Click to change theme.";
     }
 
     private string GetTooltip()
     {
-        var baseTooltip = IsHighContrast 
-            ? LocalizationService.GetString("Accessibility.SwitchToDefaultTheme")
-            : LocalizationService.GetString("Accessibility.SwitchToHighContrast");
+        var currentDescription = _themeInfo.TryGetValue(CurrentTheme, out var themeInfo) ? themeInfo.Description : "Unknown theme";
+        var tooltip = $"Theme: {currentDescription}";
+        
+        if (CurrentTheme == "auto")
+        {
+            var effectiveLabel = _themeInfo.TryGetValue(EffectiveTheme, out var effectiveInfo) ? effectiveInfo.Label : EffectiveTheme;
+            tooltip += $" (Currently: {effectiveLabel})";
+        }
         
         if (ShowKeyboardShortcut)
         {
-            baseTooltip += " (Ctrl+Alt+H)";
+            tooltip += " (Ctrl+Alt+T)";
         }
         
-        return baseTooltip;
+        return tooltip;
+    }
+
+    private string GetAriaPressed()
+    {
+        // Consider non-light themes as "pressed" state
+        return (EffectiveTheme != "light").ToString().ToLower();
+    }
+
+    private string GetActiveClass()
+    {
+        // Show active state when not using light theme
+        return EffectiveTheme != "light" ? "active" : "";
     }
 
     public void Dispose()
     {
         ThemeService.ThemeChanged -= OnThemeServiceChanged;
     }
+
+    private record ThemeInfo(string Label, string Icon, string Description);
 }

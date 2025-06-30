@@ -1,0 +1,487 @@
+/* Dark Theme for Light/Dark Mode Toggle */
+
+:root[data-theme="dark"] {
+    /* Primary colors - Dark theme */
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --background-color: #121212;
+    --surface-color: #1e1e1e;
+    --text-color: #e4e6ea;
+    --text-secondary: #b0b3b8;
+    
+    /* Interactive elements */
+    --link-color: #4fc3f7;
+    --link-hover: #29b6f6;
+    --link-visited: #ab47bc;
+    
+    /* Buttons */
+    --button-primary-bg: #0d6efd;
+    --button-primary-text: #ffffff;
+    --button-primary-border: #0d6efd;
+    --button-primary-hover-bg: #0b5ed7;
+    --button-primary-hover-text: #ffffff;
+    
+    --button-secondary-bg: #6c757d;
+    --button-secondary-text: #ffffff;
+    --button-secondary-border: #6c757d;
+    --button-secondary-hover-bg: #5c636a;
+    --button-secondary-hover-text: #ffffff;
+    
+    --button-success-bg: #198754;
+    --button-success-text: #ffffff;
+    --button-danger-bg: #dc3545;
+    --button-danger-text: #ffffff;
+    --button-warning-bg: #ffc107;
+    --button-warning-text: #000000;
+    
+    /* Form elements */
+    --input-bg: #2d2d30;
+    --input-text: #e4e6ea;
+    --input-border: #495057;
+    --input-border-focus: #0d6efd;
+    --input-placeholder: #b0b3b8;
+    
+    /* Status and priority colors */
+    --status-pending: #ffc107;
+    --status-in-progress: #0dcaf0;
+    --status-done: #198754;
+    --status-cancelled: #dc3545;
+    
+    --priority-low: #198754;
+    --priority-medium: #ffc107;
+    --priority-high: #fd7e14;
+    --priority-critical: #dc3545;
+    
+    /* Borders and separators */
+    --border-color: #495057;
+    --border-light: #6c757d;
+    --divider-color: #495057;
+    
+    /* Focus indicators */
+    --focus-color: #0d6efd;
+    --focus-background: #2d2d30;
+    --focus-text: #e4e6ea;
+    --focus-border: #0d6efd;
+    --focus-shadow: rgba(13, 110, 253, 0.25);
+    
+    /* Hover states */
+    --hover-background: #2d2d30;
+    --hover-text: #ffffff;
+    
+    /* Selection */
+    --selection-bg: #0d6efd;
+    --selection-text: #ffffff;
+    
+    /* Charts */
+    --chart-bg: #1e1e1e;
+    --chart-text: #e4e6ea;
+    --chart-grid: #495057;
+    
+    /* Navigation */
+    --nav-bg: #1e1e1e;
+    --nav-text: #e4e6ea;
+    --nav-border: #495057;
+    --nav-active-bg: #0d6efd;
+    --nav-active-text: #ffffff;
+    
+    /* Cards and panels */
+    --card-bg: #1e1e1e;
+    --card-border: #495057;
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+    
+    /* Tables */
+    --table-bg: #1e1e1e;
+    --table-stripe: #2d2d30;
+    --table-border: #495057;
+    --table-header-bg: #2d2d30;
+    --table-header-text: #e4e6ea;
+    
+    /* Notifications */
+    --alert-success-bg: #0f2419;
+    --alert-success-text: #75dd8b;
+    --alert-success-border: #198754;
+    
+    --alert-danger-bg: #2c0b0e;
+    --alert-danger-text: #ea868f;
+    --alert-danger-border: #dc3545;
+    
+    --alert-warning-bg: #332701;
+    --alert-warning-text: #ffda6a;
+    --alert-warning-border: #ffc107;
+    
+    --alert-info-bg: #032830;
+    --alert-info-text: #6edff6;
+    --alert-info-border: #0dcaf0;
+    
+    /* Loading indicators */
+    --spinner-color: #0d6efd;
+    --progress-bg: #2d2d30;
+    --progress-fill: #0d6efd;
+}
+
+/* Apply dark theme styles when theme is active */
+[data-theme="dark"] {
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* Body and main containers */
+[data-theme="dark"] body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .page {
+    background-color: var(--background-color);
+}
+
+/* Navigation */
+[data-theme="dark"] .sidebar {
+    background: linear-gradient(180deg, #1e1e1e 0%, #2d2d30 70%);
+    border-right: 1px solid var(--nav-border);
+}
+
+[data-theme="dark"] .navbar {
+    background-color: var(--nav-bg) !important;
+    border-bottom: 1px solid var(--nav-border);
+}
+
+[data-theme="dark"] .navbar-brand {
+    color: var(--nav-text) !important;
+}
+
+[data-theme="dark"] .nav-link {
+    color: var(--nav-text) !important;
+}
+
+[data-theme="dark"] .nav-link:hover,
+[data-theme="dark"] .nav-link:focus {
+    color: var(--nav-active-text) !important;
+    background-color: var(--nav-active-bg) !important;
+}
+
+[data-theme="dark"] .nav-link.active {
+    color: var(--nav-active-text) !important;
+    background-color: var(--nav-active-bg) !important;
+}
+
+/* Top row */
+[data-theme="dark"] .top-row {
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .top-row a,
+[data-theme="dark"] .top-row .btn-link {
+    color: var(--link-color);
+}
+
+[data-theme="dark"] .top-row a:hover,
+[data-theme="dark"] .top-row .btn-link:hover {
+    color: var(--link-hover);
+}
+
+/* Buttons */
+[data-theme="dark"] .btn-primary {
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    border-color: var(--button-primary-border);
+}
+
+[data-theme="dark"] .btn-primary:hover,
+[data-theme="dark"] .btn-primary:focus {
+    background-color: var(--button-primary-hover-bg);
+    color: var(--button-primary-hover-text);
+    border-color: var(--button-primary-border);
+}
+
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .btn-outline-secondary {
+    background-color: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+    border-color: var(--button-secondary-border);
+}
+
+[data-theme="dark"] .btn-secondary:hover,
+[data-theme="dark"] .btn-secondary:focus,
+[data-theme="dark"] .btn-outline-secondary:hover,
+[data-theme="dark"] .btn-outline-secondary:focus {
+    background-color: var(--button-secondary-hover-bg);
+    color: var(--button-secondary-hover-text);
+    border-color: var(--button-secondary-border);
+}
+
+[data-theme="dark"] .btn-success {
+    background-color: var(--button-success-bg);
+    color: var(--button-success-text);
+    border-color: var(--button-success-bg);
+}
+
+[data-theme="dark"] .btn-danger {
+    background-color: var(--button-danger-bg);
+    color: var(--button-danger-text);
+    border-color: var(--button-danger-bg);
+}
+
+[data-theme="dark"] .btn-warning {
+    background-color: var(--button-warning-bg);
+    color: var(--button-warning-text);
+    border-color: var(--button-warning-bg);
+}
+
+/* Forms */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border-focus);
+    box-shadow: 0 0 0 0.25rem var(--focus-shadow);
+}
+
+[data-theme="dark"] .form-control::placeholder {
+    color: var(--input-placeholder);
+}
+
+[data-theme="dark"] .form-label {
+    color: var(--text-color);
+}
+
+/* Tables */
+[data-theme="dark"] .table {
+    --bs-table-bg: var(--table-bg);
+    --bs-table-color: var(--text-color);
+    --bs-table-border-color: var(--table-border);
+    --bs-table-striped-bg: var(--table-stripe);
+}
+
+[data-theme="dark"] .table th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+    border-color: var(--table-border);
+}
+
+[data-theme="dark"] .table td {
+    border-color: var(--table-border);
+}
+
+/* Cards */
+[data-theme="dark"] .card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    box-shadow: var(--card-shadow);
+}
+
+[data-theme="dark"] .card-header {
+    background-color: var(--surface-color);
+    border-bottom-color: var(--card-border);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .card-body {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+/* Badges */
+[data-theme="dark"] .badge-status-pending {
+    background-color: var(--status-pending);
+    color: #000000;
+}
+
+[data-theme="dark"] .badge-status-in-progress {
+    background-color: var(--status-in-progress);
+    color: #000000;
+}
+
+[data-theme="dark"] .badge-status-done {
+    background-color: var(--status-done);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .badge-status-cancelled {
+    background-color: var(--status-cancelled);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .badge-priority-low {
+    background-color: var(--priority-low);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .badge-priority-medium {
+    background-color: var(--priority-medium);
+    color: #000000;
+}
+
+[data-theme="dark"] .badge-priority-high {
+    background-color: var(--priority-high);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .badge-priority-critical {
+    background-color: var(--priority-critical);
+    color: #ffffff;
+}
+
+/* Links */
+[data-theme="dark"] a {
+    color: var(--link-color);
+}
+
+[data-theme="dark"] a:hover,
+[data-theme="dark"] a:focus {
+    color: var(--link-hover);
+}
+
+[data-theme="dark"] a:visited {
+    color: var(--link-visited);
+}
+
+/* Focus indicators */
+[data-theme="dark"] .btn:focus,
+[data-theme="dark"] .btn:active:focus,
+[data-theme="dark"] .btn-link.nav-link:focus,
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem var(--surface-color), 0 0 0 0.25rem var(--focus-shadow);
+}
+
+/* Alerts and notifications */
+[data-theme="dark"] .alert-success {
+    background-color: var(--alert-success-bg);
+    color: var(--alert-success-text);
+    border-color: var(--alert-success-border);
+}
+
+[data-theme="dark"] .alert-danger {
+    background-color: var(--alert-danger-bg);
+    color: var(--alert-danger-text);
+    border-color: var(--alert-danger-border);
+}
+
+[data-theme="dark"] .alert-warning {
+    background-color: var(--alert-warning-bg);
+    color: var(--alert-warning-text);
+    border-color: var(--alert-warning-border);
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: var(--alert-info-bg);
+    color: var(--alert-info-text);
+    border-color: var(--alert-info-border);
+}
+
+/* Modal dialogs */
+[data-theme="dark"] .modal-content {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-header {
+    background-color: var(--surface-color);
+    border-bottom-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-body {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    background-color: var(--surface-color);
+    border-top-color: var(--border-color);
+}
+
+/* Dropdowns */
+[data-theme="dark"] .dropdown-menu {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .dropdown-item {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .dropdown-item:focus {
+    background-color: var(--hover-background);
+    color: var(--hover-text);
+}
+
+/* Loading spinners */
+[data-theme="dark"] .spinner-border {
+    color: var(--spinner-color);
+}
+
+[data-theme="dark"] .spinner-large {
+    border-color: var(--spinner-color);
+    border-top-color: transparent;
+}
+
+/* Progress bars */
+[data-theme="dark"] .progress {
+    background-color: var(--progress-bg);
+}
+
+[data-theme="dark"] .progress-bar {
+    background-color: var(--progress-fill);
+}
+
+/* Charts - override Chart.js colors */
+[data-theme="dark"] canvas {
+    background-color: var(--chart-bg) !important;
+}
+
+/* Selection */
+[data-theme="dark"] ::selection {
+    background-color: var(--selection-bg);
+    color: var(--selection-text);
+}
+
+[data-theme="dark"] ::-moz-selection {
+    background-color: var(--selection-bg);
+    color: var(--selection-text);
+}
+
+/* Blazor error UI */
+[data-theme="dark"] #blazor-error-ui {
+    background-color: var(--alert-warning-bg);
+    color: var(--alert-warning-text);
+    border-top: 2px solid var(--alert-warning-border);
+}
+
+/* Validation messages */
+[data-theme="dark"] .validation-message {
+    color: var(--alert-danger-text);
+}
+
+/* Invalid form fields */
+[data-theme="dark"] .invalid {
+    border-color: var(--button-danger-bg);
+}
+
+/* Valid form fields */
+[data-theme="dark"] .valid.modified:not([type="checkbox"]) {
+    border-color: var(--button-success-bg);
+}
+
+/* Ensure proper contrast for theme toggle when dark mode is active */
+[data-theme="dark"] .theme-toggle-button {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .theme-toggle-button:hover {
+    background-color: var(--hover-background);
+    border-color: var(--border-color);
+    color: var(--hover-text);
+}
