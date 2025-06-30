@@ -9,16 +9,19 @@ This document outlines the required GitHub repository secrets for the CI/CD pipe
 Configure the following secrets in your GitHub repository:
 
 1. **AWS_ACCESS_KEY_ID**
+
    - Description: AWS access key for ECR authentication
    - Value: Your AWS IAM user access key ID
    - Usage: Used for AWS CLI authentication in GitHub Actions
 
 2. **AWS_SECRET_ACCESS_KEY**
+
    - Description: AWS secret access key for ECR authentication
    - Value: Your AWS IAM user secret access key
    - Usage: Used for AWS CLI authentication in GitHub Actions
 
 3. **AWS_REGION**
+
    - Description: AWS region where ECR repository is located
    - Value: `us-east-1` (or your preferred region)
    - Usage: Specifies the AWS region for ECR operations
@@ -57,29 +60,29 @@ The IAM user needs the following permissions:
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "ecr:BatchCheckLayerAvailability",
-                "ecr:GetDownloadUrlForLayer",
-                "ecr:BatchGetImage",
-                "ecr:GetAuthorizationToken"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "ecr:InitiateLayerUpload",
-                "ecr:UploadLayerPart",
-                "ecr:CompleteLayerUpload",
-                "ecr:PutImage"
-            ],
-            "Resource": "arn:aws:ecr:*:*:repository/task-management-system"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:PutImage"
+      ],
+      "Resource": "arn:aws:ecr:*:*:repository/task-management-system"
+    }
+  ]
 }
 ```
 
@@ -95,11 +98,13 @@ The IAM user needs the following permissions:
 ### Common Issues
 
 1. **Authentication Failed**
+
    - Verify access key ID and secret are correct
    - Check IAM user has required permissions
    - Ensure AWS region matches ECR repository region
 
 2. **Repository Not Found**
+
    - Verify ECR repository name matches secret value
    - Check repository exists in specified region
    - Ensure IAM user has access to the repository

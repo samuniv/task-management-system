@@ -14,6 +14,7 @@ The CI/CD pipeline is implemented using GitHub Actions and consists of four main
 ## Workflow Triggers
 
 The pipeline is triggered on:
+
 - Push to `main` or `develop` branches
 - Pull requests to `main` branch
 
@@ -35,6 +36,7 @@ The pipeline is triggered on:
   - Upload test results and coverage reports
 
 **Service Configuration**:
+
 ```yaml
 services:
   mysql:
@@ -64,6 +66,7 @@ services:
   - Support for linux/amd64 platform
 
 **Image Tagging Strategy**:
+
 - `latest` - for main branch
 - `{branch}-{sha}` - for feature branches
 - `sha-{commit}` - unique identifier for each commit
@@ -79,6 +82,7 @@ services:
   - Deploy to ECS service with stability wait
 
 **ECS Configuration**:
+
 - **Cluster**: `task-management-cluster`
 - **Service**: `task-management-service`
 - **Container**: `task-management-app`
@@ -97,11 +101,13 @@ services:
 Configure the following secrets in your GitHub repository:
 
 ### AWS Secrets (Recommended: OIDC)
+
 ```
 AWS_ROLE_TO_ASSUME=arn:aws:iam::ACCOUNT:role/GitHubActionsRole
 ```
 
 ### Alternative: Access Keys (Less Secure)
+
 ```
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
@@ -168,9 +174,7 @@ The role/user needs the following permissions:
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "iam:PassRole"
-      ],
+      "Action": ["iam:PassRole"],
       "Resource": "arn:aws:iam::ACCOUNT:role/ecsTaskExecutionRole"
     }
   ]
@@ -202,17 +206,20 @@ aws ecr create-repository --repository-name task-management-system --region us-e
 ### Setup
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd task-management-system
 ```
 
 2. Start the development environment:
+
 ```bash
 docker-compose up -d mysql
 ```
 
 3. Run the application:
+
 ```bash
 dotnet run --project src/BlazorWasm.Server
 ```
@@ -222,11 +229,13 @@ dotnet run --project src/BlazorWasm.Server
 ### Testing
 
 Run unit tests:
+
 ```bash
 dotnet test
 ```
 
 Run integration tests (requires MySQL):
+
 ```bash
 docker-compose up -d mysql
 dotnet test --filter "Category=Integration"
@@ -237,6 +246,7 @@ dotnet test --filter "Category=Integration"
 ### Health Checks
 
 The application exposes a health check endpoint at `/healthz` that verifies:
+
 - Database connectivity
 - Application health
 
@@ -256,16 +266,19 @@ The application exposes a health check endpoint at `/healthz` that verifies:
 ### Common Issues
 
 1. **Build Failures**
+
    - Check .NET SDK version compatibility
    - Verify package references in `.csproj` files
    - Review build logs in GitHub Actions
 
 2. **Test Failures**
+
    - Ensure MySQL service is healthy before running integration tests
    - Check database connection strings
    - Verify test data setup
 
 3. **Docker Build Issues**
+
    - Check Dockerfile syntax
    - Verify base image availability
    - Review build context and file paths
