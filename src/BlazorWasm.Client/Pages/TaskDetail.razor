@@ -7,6 +7,7 @@
 @using FluentValidation
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 @using Blazored.FluentValidation
 @using TaskStatus = BlazorWasm.Shared.Enums.TaskStatus
 @inject ApiService ApiService
@@ -49,6 +50,68 @@
         </div>
 
         <div class="task-detail-content">
+            @if (IsNew)
+            {
+                <!-- Natural Language Input Section -->
+                <div class="natural-language-section">
+                    <h3>
+                        <i class="icon-magic"></i>
+                        Quick Task Creation
+                    </h3>
+                    <p class="help-text">
+                        Describe your task in plain English, and we'll fill out the form for you.
+                        <br />
+                        <small class="text-muted">
+                            Example: "Review Q3 report with Alice by next Friday" or "High priority: Fix login bug ASAP"
+                        </small>
+                    </p>
+                    
+                    <div class="natural-language-input">
+                        <div class="input-group">
+                            <InputText @bind-Value="NaturalLanguageInput" 
+                                      class="form-control" 
+                                      placeholder="Describe your task here..."
+                                      disabled="@IsParsingNaturalLanguage"
+                                      @onkeypress="HandleKeyPress" />
+                            <button class="btn btn-primary" 
+                                   @onclick="ParseNaturalLanguage" 
+                                   disabled="@(IsParsingNaturalLanguage || string.IsNullOrWhiteSpace(NaturalLanguageInput))">
+                                @if (IsParsingNaturalLanguage)
+                                {
+                                    <span class="spinner-small"></span>
+                                    <span>Processing...</span>
+                                }
+                                else
+                                {
+                                    <i class="icon-magic"></i>
+                                    <span>Parse Task</span>
+                                }
+                            </button>
+                        </div>
+                        
+                        @if (!string.IsNullOrWhiteSpace(ParsedMessage))
+                        {
+                            <div class="alert alert-success mt-2">
+                                <i class="icon-check"></i>
+                                @ParsedMessage
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrWhiteSpace(ParseErrorMessage))
+                        {
+                            <div class="alert alert-danger mt-2">
+                                <i class="icon-error"></i>
+                                @ParseErrorMessage
+                            </div>
+                        }
+                    </div>
+                    
+                    <div class="section-divider">
+                        <span>or fill out the form manually</span>
+                    </div>
+                </div>
+            }
+
             <div class="task-form-section">
                 <EditForm Model="TaskModel" OnValidSubmit="SaveTask" FormName="TaskEditForm">
                     <FluentValidationValidator />
@@ -162,6 +225,12 @@
     private bool IsLoading { get; set; } = true;
     private bool IsSubmitting { get; set; } = false;
     private bool IsNew => Id == 0;
+
+    // Natural Language Processing properties
+    private string NaturalLanguageInput { get; set; } = string.Empty;
+    private bool IsParsingNaturalLanguage { get; set; } = false;
+    private string ParsedMessage { get; set; } = string.Empty;
+    private string ParseErrorMessage { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,6 +365,80 @@
         finally
         {
             IsSubmitting = false;
+        }
+    }
+
+    private async Task ParseNaturalLanguage()
+    {
+        if (string.IsNullOrWhiteSpace(NaturalLanguageInput) || IsParsingNaturalLanguage)
+            return;
+
+        IsParsingNaturalLanguage = true;
+        ParsedMessage = string.Empty;
+        ParseErrorMessage = string.Empty;
+
+        try
+        {
+            var request = new NaturalLanguageTaskRequest
+            {
+                Input = NaturalLanguageInput.Trim()
+            };
+
+            var response = await ApiService.ParseNaturalLanguageTaskAsync(request);
+            
+            if (response != null && response.IsSuccess)
+            {
+                // Update the form with parsed data
+                TaskModel.Title = response.Title;
+                TaskModel.Description = response.Description;
+                TaskModel.Priority = response.Priority;
+                TaskModel.DueDate = response.DueDate;
+
+                // Set assignee if we can find a matching user
+                if (!string.IsNullOrWhiteSpace(response.Assignee) && Users != null)
+                {
+                    var matchingUser = Users.FirstOrDefault(u => 
+                        u.Email.Contains(response.Assignee, StringComparison.OrdinalIgnoreCase) ||
+                        u.FirstName.Contains(response.Assignee, StringComparison.OrdinalIgnoreCase) ||
+                        u.LastName.Contains(response.Assignee, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (matchingUser != null)
+                    {
+                        TaskModel.AssigneeId = matchingUser.Id;
+                    }
+                }
+
+                ParsedMessage = $"Successfully parsed: \"{response.Title}\" with {response.Priority} priority";
+                
+                // Clear the input after successful parsing
+                NaturalLanguageInput = string.Empty;
+                
+                // Notify success
+                NotificationService.ShowSuccess("Task details parsed successfully! Review and save the task.");
+            }
+            else
+            {
+                ParseErrorMessage = "Failed to parse the task description. Please try rephrasing or use the manual form.";
+                NotificationService.ShowWarning("Could not parse the task description. Please try a different format.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ParseErrorMessage = "An error occurred while processing your request. Please try again.";
+            NotificationService.ShowError("Failed to parse natural language input.");
+            Console.WriteLine($"Natural language parsing error: {ex.Message}");
+        }
+        finally
+        {
+            IsParsingNaturalLanguage = false;
+        }
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !IsParsingNaturalLanguage && !string.IsNullOrWhiteSpace(NaturalLanguageInput))
+        {
+            await ParseNaturalLanguage();
         }
     }
 

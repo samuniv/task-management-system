@@ -1,0 +1,327 @@
+@page "/dashboard"
+@using BlazorWasm.Shared.DTOs
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@inject INotificationService NotificationService
+@inject ILocalizationService LocalizationService
+
+<PageTitle>@LocalizationService.GetString("Dashboard.Title") - Task Management System</PageTitle>
+
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <h1 class="dashboard-title" id="dashboard-title">@LocalizationService.GetString("Dashboard.Title")</h1>
+        <p class="dashboard-subtitle">@LocalizationService.GetString("Dashboard.Overview")</p>
+    </header>
+
+    @if (IsLoading)
+    {
+        <div class="loading-container" role="status" aria-live="polite">
+            <div class="spinner-large" aria-hidden="true"></div>
+            <p>@LocalizationService.GetString("Message.Loading")</p>
+        </div>
+    }
+    else if (Statistics != null)
+    {
+        <!-- Overview Cards -->
+        <section class="overview-grid" aria-labelledby="overview-heading">
+            <h2 id="overview-heading" class="visually-hidden">@LocalizationService.GetString("Dashboard.Overview")</h2>
+            
+            <div class="overview-card" role="article">
+                <div class="card-icon total-tasks" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3 aria-label="@LocalizationService.GetString("Dashboard.TotalTasks"): @Statistics.OverviewStats.TotalTasks">@Statistics.OverviewStats.TotalTasks</h3>
+                    <p>@LocalizationService.GetString("Dashboard.TotalTasks")</p>
+                </div>
+            </div>
+
+            <div class="overview-card" role="article">
+                <div class="card-icon completed-tasks" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3 aria-label="@LocalizationService.GetString("Dashboard.CompletedTasks"): @Statistics.OverviewStats.CompletedTasks">@Statistics.OverviewStats.CompletedTasks</h3>
+                    <p>@LocalizationService.GetString("Dashboard.CompletedTasks")</p>
+                </div>
+            </div>
+
+            <div class="overview-card" role="article">
+                <div class="card-icon completion-rate">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3>@Statistics.OverviewStats.CompletionRate.ToString("F1")%</h3>
+                    <p>@LocalizationService.GetString("Dashboard.CompletionRate")</p>
+                </div>
+            </div>
+
+            <div class="overview-card">
+                <div class="card-icon overdue-tasks">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3>@Statistics.OverviewStats.OverdueTasks</h3>
+                    <p>@LocalizationService.GetString("Dashboard.OverdueTasks")</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid" role="region" aria-label="Task Analytics Charts">
+            <!-- Task Status Chart -->
+            <article class="chart-card">
+                <header class="chart-header">
+                    <h3 id="status-chart-heading">Task Status Distribution</h3>
+                    <p>Current status breakdown</p>
+                </header>
+                <div class="chart-container">
+                    <canvas id="statusChart" 
+                            role="img" 
+                            aria-labelledby="status-chart-heading"
+                            aria-describedby="status-chart-description">
+                    </canvas>
+                    <p id="status-chart-description" class="visually-hidden">
+                        Chart showing task distribution: Pending (@Statistics.StatusStats.Pending), 
+                        In Progress (@Statistics.StatusStats.InProgress), 
+                        Done (@Statistics.StatusStats.Done)
+                    </p>
+                    <!-- Fallback table for screen readers -->
+                    <table class="visually-hidden" aria-label="Task Status Data">
+                        <caption>Task Status Distribution Data</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Status</th>
+                                <th scope="col">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">Pending</th>
+                                <td>@Statistics.StatusStats.Pending</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">In Progress</th>
+                                <td>@Statistics.StatusStats.InProgress</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Done</th>
+                                <td>@Statistics.StatusStats.Done</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <!-- Task Priority Chart -->
+            <article class="chart-card">
+                <header class="chart-header">
+                    <h3 id="priority-chart-heading">Task Priority Distribution</h3>
+                    <p>Priority level breakdown</p>
+                </header>
+                <div class="chart-container">
+                    <canvas id="priorityChart" 
+                            role="img" 
+                            aria-labelledby="priority-chart-heading"
+                            aria-describedby="priority-chart-description">
+                    </canvas>
+                    <p id="priority-chart-description" class="visually-hidden">
+                        Chart showing priority distribution: Low (@Statistics.PriorityStats.Low), 
+                        Medium (@Statistics.PriorityStats.Medium), 
+                        High (@Statistics.PriorityStats.High), 
+                        Critical (@Statistics.PriorityStats.Critical)
+                    </p>
+                    <!-- Fallback table for screen readers -->
+                    <table class="visually-hidden" aria-label="Task Priority Data">
+                        <caption>Task Priority Distribution Data</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Priority</th>
+                                <th scope="col">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">Low</th>
+                                <td>@Statistics.PriorityStats.Low</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Medium</th>
+                                <td>@Statistics.PriorityStats.Medium</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">High</th>
+                                <td>@Statistics.PriorityStats.High</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Critical</th>
+                                <td>@Statistics.PriorityStats.Critical</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <!-- Completion Trend Chart -->
+            <article class="chart-card chart-wide">
+                <header class="chart-header">
+                    <h3 id="trend-chart-heading">Task Completion Trend</h3>
+                    <p>Daily task creation and completion over the last 30 days</p>
+                </header>
+                <div class="chart-container">
+                    <canvas id="trendChart" 
+                            role="img" 
+                            aria-labelledby="trend-chart-heading"
+                            aria-describedby="trend-chart-description">
+                    </canvas>
+                    <p id="trend-chart-description" class="visually-hidden">
+                        Line chart showing daily task completion trends over the past 30 days.
+                        Data includes both tasks created and completed each day.
+                    </p>
+                    <!-- Fallback table for screen readers -->
+                    <table class="visually-hidden" aria-label="Task Completion Trend Data">
+                        <caption>Daily Task Creation and Completion Data (Last 30 Days)</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Created</th>
+                                <th scope="col">Completed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Statistics.CompletionTrend?.Any() == true)
+                            {
+                                @foreach (var point in Statistics.CompletionTrend.TakeLast(7))
+                                {
+                                    <tr>
+                                        <th scope="row">@point.Date.ToString("MM/dd")</th>
+                                        <td>@point.CreatedTasks</td>
+                                        <td>@point.CompletedTasks</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+
+        <!-- Additional Stats -->
+        <section class="additional-stats" role="region" aria-label="Additional Task Statistics">
+            <div class="stat-card">
+                <h4 id="due-today-heading">Due Today</h4>
+                <span class="stat-value" aria-labelledby="due-today-heading">@Statistics.OverviewStats.TasksDueToday</span>
+            </div>
+            <div class="stat-card">
+                <h4 id="due-week-heading">Due This Week</h4>
+                <span class="stat-value" aria-labelledby="due-week-heading">@Statistics.OverviewStats.TasksDueThisWeek</span>
+            </div>
+        </section>
+    }
+    else
+    {
+        <div class="error-container" role="alert" aria-live="polite">
+            <div class="error-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+            </div>
+            <h3>Unable to Load Dashboard</h3>
+            <p>There was an error loading the dashboard data. Please try refreshing the page.</p>
+            <button class="btn btn-primary" @onclick="LoadDashboardData" type="button">
+                Retry
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private TaskStatisticsDto? Statistics { get; set; }
+    private bool IsLoading { get; set; } = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        IsLoading = true;
+        try
+        {
+            Statistics = await ApiService.GetTaskStatisticsAsync();
+            
+            if (Statistics == null)
+            {
+                NotificationService.ShowError("Failed to load dashboard data");
+            }
+            else
+            {
+                // Charts will be rendered after the page updates
+                StateHasChanged();
+                await Task.Delay(100); // Give time for DOM to update
+                await RenderCharts();
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError("Error loading dashboard: " + ex.Message);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task RenderCharts()
+    {
+        if (Statistics == null) return;
+
+        try
+        {
+            // Render status chart
+            var statusResult = await JSRuntime.InvokeAsync<bool>("chartInterop.createStatusChart", 
+                "statusChart", Statistics.StatusStats);
+
+            // Render priority chart  
+            var priorityResult = await JSRuntime.InvokeAsync<bool>("chartInterop.createPriorityChart",
+                "priorityChart", Statistics.PriorityStats);
+
+            // Render trend chart
+            var trendResult = await JSRuntime.InvokeAsync<bool>("chartInterop.createTrendChart",
+                "trendChart", Statistics.CompletionTrend);
+
+            if (!statusResult || !priorityResult || !trendResult)
+            {
+                NotificationService.ShowWarning("Some charts failed to render");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError("Error rendering charts: " + ex.Message);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Clean up charts when component is disposed
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("chartInterop.destroyChart", "statusChart");
+            await JSRuntime.InvokeVoidAsync("chartInterop.destroyChart", "priorityChart");
+            await JSRuntime.InvokeVoidAsync("chartInterop.destroyChart", "trendChart");
+        }
+        catch (Exception)
+        {
+            // Ignore disposal errors
+        }
+    }
+}

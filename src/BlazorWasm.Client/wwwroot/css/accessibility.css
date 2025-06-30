@@ -1,0 +1,446 @@
+/* Accessibility CSS - Skip Links and Focus Management */
+
+/* Skip navigation link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 9999;
+    border-radius: 0 0 4px 4px;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Visually hidden but available to screen readers */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Visually hidden but focusable (for skip links) */
+.visually-hidden-focusable:focus,
+.visually-hidden-focusable:active {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: inherit !important;
+    margin: inherit !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: inherit !important;
+}
+
+/* Enhanced focus indicators */
+*:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+}
+
+/* Button focus states */
+.btn:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.25);
+}
+
+/* Form control focus states */
+.form-control:focus,
+.form-select:focus {
+    border-color: #0066cc;
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.25);
+}
+
+/* Link focus states */
+a:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    background-color: rgba(0, 102, 204, 0.1);
+}
+
+/* Table sortable button styling */
+.sortable-button {
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sortable-button:hover {
+    color: #0066cc;
+    background: none;
+    border: none;
+}
+
+.sortable-button:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    background-color: rgba(0, 102, 204, 0.1);
+    border: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    *:focus {
+        outline: 3px solid;
+        outline-offset: 2px;
+    }
+    
+    .btn:focus {
+        outline: 3px solid;
+        outline-offset: 2px;
+        box-shadow: none;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        outline: 3px solid;
+        outline-offset: 2px;
+        box-shadow: none;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Color contrast improvements for badges */
+.badge-status-pending {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.badge-status-in-progress {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.badge-status-review {
+    background-color: #fd7e14;
+    color: #fff;
+}
+
+.badge-status-done {
+    background-color: #198754;
+    color: #fff;
+}
+
+.badge-priority-low {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.badge-priority-medium {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.badge-priority-high {
+    background-color: #fd7e14;
+    color: #fff;
+}
+
+.badge-priority-critical {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+/* Improve table accessibility */
+.table-striped > tbody > tr:nth-of-type(odd) > td,
+.table-striped > tbody > tr:nth-of-type(odd) > th {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.table-hover > tbody > tr:hover > td,
+.table-hover > tbody > tr:hover > th {
+    background-color: rgba(0, 102, 204, 0.1);
+}
+
+/* Loading state accessibility */
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 2rem;
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #0066cc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Action button group improvements */
+.action-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.action-buttons .btn {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Avatar improvements */
+.avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Due date visual indicator */
+.due-soon {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* Enhanced Keyboard Navigation Styles */
+
+/* Focus management for tables */
+.task-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.task-table th:focus,
+.task-table td:focus {
+    outline: 3px solid var(--focus-color);
+    outline-offset: -2px;
+    background-color: var(--focus-background);
+    position: relative;
+    z-index: 1;
+}
+
+/* Keyboard navigation for button groups */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-buttons:focus-within {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+}
+
+/* Roving tabindex support for button groups */
+.btn-group[role="group"] button:not(:first-child) {
+    tabindex: -1;
+}
+
+.btn-group[role="group"] button.active,
+.btn-group[role="group"] button:focus {
+    tabindex: 0;
+}
+
+/* Enhanced dropdown keyboard navigation */
+.dropdown-menu {
+    border: 2px solid transparent;
+}
+
+.dropdown-menu:focus-within {
+    border-color: var(--focus-color);
+}
+
+.dropdown-item:focus {
+    background-color: var(--focus-background);
+    color: var(--focus-text);
+    outline: none;
+}
+
+/* Search form keyboard enhancements */
+.search-container .form-control:focus {
+    box-shadow: 0 0 0 0.2rem var(--focus-shadow);
+    border-color: var(--focus-border);
+}
+
+/* Table keyboard navigation */
+.table-responsive {
+    position: relative;
+}
+
+.table-responsive:focus-within::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid var(--focus-color);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Sortable headers keyboard support */
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.sortable-header:focus {
+    outline: 3px solid var(--focus-color);
+    outline-offset: 2px;
+}
+
+.sortable-header:hover,
+.sortable-header:focus {
+    background-color: var(--hover-background);
+}
+
+/* Status and priority badge keyboard focus */
+.badge:focus {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 1px;
+}
+
+/* Modal keyboard navigation */
+.modal[data-focus-trap="true"] {
+    border: 2px solid var(--focus-color);
+}
+
+/* Custom focus indicators for complex components */
+.chart-container:focus-within {
+    outline: 3px solid var(--focus-color);
+    outline-offset: 2px;
+}
+
+/* Pagination keyboard navigation */
+.pagination .page-link:focus {
+    box-shadow: 0 0 0 0.2rem var(--focus-shadow);
+    border-color: var(--focus-border);
+    z-index: 2;
+}
+
+/* Form validation focus improvements */
+.form-control.is-invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.form-control.is-valid:focus {
+    border-color: #198754;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+/* Focus trap container */
+[data-focus-trap="true"] {
+    position: relative;
+}
+
+[data-focus-trap="true"]::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 2px dashed var(--focus-color);
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* Keyboard navigation help */
+.keyboard-help {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    max-width: 300px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.keyboard-help.active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.keyboard-help h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.keyboard-help ul {
+    margin: 0;
+    padding-left: 1rem;
+    font-size: 0.875rem;
+}
+
+.keyboard-help kbd {
+    background: var(--secondary-background);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 0.75rem;
+}
+
+/* Tab navigation enhancement */
+.tab-enhanced:focus {
+    outline: 3px solid var(--focus-color);
+    outline-offset: 2px;
+}
+
+/* Ensure all interactive elements are keyboard accessible */
+[onclick]:not(button):not(a):not(input):not(select):not(textarea) {
+    cursor: pointer;
+    tabindex: 0;
+}
+
+[onclick]:not(button):not(a):not(input):not(select):not(textarea):focus {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 1px;
+}
+
+/* Print styles for accessibility */
+@media print {
+    .skip-link,
+    .keyboard-help,
+    .focus-indicator {
+        display: none !important;
+    }
+}

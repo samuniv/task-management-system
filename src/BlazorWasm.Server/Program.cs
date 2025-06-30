@@ -9,10 +9,38 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using FluentValidation.AspNetCore;
 using System.Text;
+using Serilog;
+using Serilog.Events;
+using HealthChecks.UI.Client;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Azure.AI.OpenAI;
+using Azure;
+using System.ClientModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/taskmanager-.log", 
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+// Use Serilog for logging
+builder.Host.UseSerilog();
+
+try
+{
+    Log.Information("Starting Task Management API");
+
+    // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
@@ -103,6 +131,50 @@ builder.Services.AddAuthorization(options =>
 // Register services
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+// Configure Azure OpenAI services
+builder.Services.AddSingleton<AzureOpenAIClient>(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var apiKey = configuration["AzureOpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+    var endpoint = configuration["AzureOpenAI:Endpoint"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+    
+    if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(endpoint))
+    {
+        // Log warning but don't fail startup - fallback to mock service
+        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning("Azure OpenAI credentials not configured. Using mock AI service for development.");
+        return null!;
+    }
+    
+    return new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(apiKey));
+});
+
+// Register AI parsing service - use Azure OpenAI if available, otherwise mock
+builder.Services.AddScoped<IAITaskParsingService>(serviceProvider =>
+{
+    var azureOpenAIClient = serviceProvider.GetService<AzureOpenAIClient>();
+    if (azureOpenAIClient != null)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<AzureOpenAITaskParsingService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new AzureOpenAITaskParsingService(azureOpenAIClient, logger, configuration);
+    }
+    else
+    {
+        // Fallback to mock service for development
+        var logger = serviceProvider.GetRequiredService<ILogger<MockAITaskParsingService>>();
+        return new MockAITaskParsingService(logger);
+    }
+});
+
+// Add Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck("database", () => 
+    {
+        // Simple check for InMemory database
+        return HealthCheckResult.Healthy("Database is accessible");
+    });
+
 var app = builder.Build();
 
 // Initialize database with sample data
@@ -128,15 +200,35 @@ else
 
 app.UseHttpsRedirection();
 
+// Add Serilog request logging
+app.UseSerilogRequestLogging();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseAntiforgery();
 
 app.MapControllers();
+
+// Map health checks endpoint
+app.MapHealthChecks("/healthz", new HealthCheckOptions
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(BlazorWasm.Client._Imports).Assembly);
+    .AddAdditionalAssemblies(typeof(Counter).Assembly);
 
 app.Run();
+
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

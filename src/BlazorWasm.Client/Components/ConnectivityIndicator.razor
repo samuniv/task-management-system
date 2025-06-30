@@ -1,0 +1,130 @@
+@using BlazorWasm.Client.Services
+@inject IConnectivityService ConnectivityService
+@inject ILocalizationService LocalizationService
+@implements IDisposable
+
+<div class="connectivity-indicator @(IsOnline ? "online" : "offline")" 
+     role="status" 
+     aria-live="polite"
+     aria-label="@GetStatusText()">
+    
+    @if (IsOnline)
+    {
+        <span class="connectivity-icon online-icon" title="@LocalizationService.GetString("Online")">🟢</span>
+        <span class="connectivity-text d-none d-sm-inline">@LocalizationService.GetString("Online")</span>
+    }
+    else
+    {
+        <span class="connectivity-icon offline-icon" title="@LocalizationService.GetString("Offline")">🔴</span>
+        <span class="connectivity-text d-none d-sm-inline">@LocalizationService.GetString("Offline")</span>
+    }
+    
+    @if (ShowCacheInfo && !IsOnline && CacheStatus != null)
+    {
+        <small class="cache-info ms-2" title="@LocalizationService.GetString("CachedItemsAvailable")">
+            (@CacheStatus.TotalCacheSize @LocalizationService.GetString("CachedItems"))
+        </small>
+    }
+</div>
+
+@code {
+    [Parameter] public bool ShowCacheInfo { get; set; } = true;
+    
+    private bool IsOnline = true;
+    private CacheStatus? CacheStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ConnectivityService.ConnectivityChanged += OnConnectivityChanged;
+        IsOnline = ConnectivityService.IsOnline;
+        
+        if (!IsOnline)
+        {
+            CacheStatus = await ConnectivityService.GetCacheStatusAsync();
+        }
+    }
+
+    private async void OnConnectivityChanged(bool isOnline)
+    {
+        IsOnline = isOnline;
+        
+        if (!isOnline)
+        {
+            CacheStatus = await ConnectivityService.GetCacheStatusAsync();
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetStatusText()
+    {
+        var status = IsOnline ? LocalizationService.GetString("Online") : LocalizationService.GetString("Offline");
+        if (!IsOnline && CacheStatus != null && CacheStatus.TotalCacheSize > 0)
+        {
+            return $"{status} - {CacheStatus.TotalCacheSize} {LocalizationService.GetString("CachedItems")}";
+        }
+        return status;
+    }
+
+    public void Dispose()
+    {
+        ConnectivityService.ConnectivityChanged -= OnConnectivityChanged;
+    }
+}
+
+<style>
+    .connectivity-indicator {
+        display: flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+    }
+
+    .connectivity-indicator.online {
+        background-color: #d1f2eb;
+        color: #0d6449;
+        border: 1px solid #a3e3d0;
+    }
+
+    .connectivity-indicator.offline {
+        background-color: #fadbd8;
+        color: #922b21;
+        border: 1px solid #f5b7b1;
+    }
+
+    .connectivity-icon {
+        margin-right: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    .connectivity-text {
+        font-weight: 500;
+    }
+
+    .cache-info {
+        color: inherit;
+        opacity: 0.8;
+    }
+
+    @@media (max-width: 576px) {
+        .connectivity-indicator {
+            padding: 0.125rem 0.25rem;
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Dark theme support */
+    [data-theme="dark"] .connectivity-indicator.online {
+        background-color: #0d6449;
+        color: #d1f2eb;
+        border-color: #52c7b8;
+    }
+
+    [data-theme="dark"] .connectivity-indicator.offline {
+        background-color: #922b21;
+        color: #fadbd8;
+        border-color: #e74c3c;
+    }
+</style>

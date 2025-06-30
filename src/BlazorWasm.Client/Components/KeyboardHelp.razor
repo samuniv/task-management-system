@@ -1,0 +1,57 @@
+@using BlazorWasm.Client.Services
+@inject IFocusManagementService FocusManagement
+@inject IJSRuntime JSRuntime
+
+<div class="keyboard-help @(IsVisible ? "active" : "")" id="keyboard-help">
+    <h4>Keyboard Shortcuts</h4>
+    <ul>
+        <li><kbd>Alt</kbd> + <kbd>1</kbd>: Skip to main content</li>
+        <li><kbd>Alt</kbd> + <kbd>2</kbd>: Skip to navigation</li>
+        <li><kbd>Tab</kbd>: Move to next element</li>
+        <li><kbd>Shift</kbd> + <kbd>Tab</kbd>: Move to previous element</li>
+        <li><kbd>Enter</kbd> / <kbd>Space</kbd>: Activate button or link</li>
+        <li><kbd>Esc</kbd>: Close modal or dropdown</li>
+        <li><kbd>Arrow keys</kbd>: Navigate within groups</li>
+        <li><kbd>?</kbd>: Toggle this help</li>
+    </ul>
+    <button class="btn btn-sm btn-secondary mt-2" @onclick="HideHelp">
+        Close
+    </button>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; } = false;
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === '?' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                        const activeElement = document.activeElement;
+                        if (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA') {
+                            e.preventDefault();
+                            DotNet.invokeMethodAsync('BlazorWasm.Client', 'ToggleKeyboardHelp');
+                        }
+                    }
+                });
+            ");
+        }
+    }
+
+    private async Task HideHelp()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+
+    [JSInvokable]
+    public static async Task ToggleKeyboardHelp()
+    {
+        // This method is called from JavaScript to toggle the help
+        // The actual toggle is handled by JavaScript directly
+        await Task.CompletedTask;
+    }
+}

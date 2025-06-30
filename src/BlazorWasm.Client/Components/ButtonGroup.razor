@@ -1,0 +1,153 @@
+@using BlazorWasm.Client.Services
+@inject IFocusManagementService FocusManagement
+@inject IJSRuntime JSRuntime
+
+<div class="@CssClass" 
+     role="@Role" 
+     aria-label="@AriaLabel"
+     id="@Id"
+     @onkeydown="OnKeyDown">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = $"btn-group-{Guid.NewGuid():N}";
+    [Parameter] public string CssClass { get; set; } = "btn-group";
+    [Parameter] public string Role { get; set; } = "group";
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool EnableArrowKeys { get; set; } = true;
+    [Parameter] public string Orientation { get; set; } = "horizontal"; // "horizontal" or "vertical"
+
+    private List<string> buttonIds = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && EnableArrowKeys)
+        {
+            await SetupRovingTabindex();
+        }
+    }
+
+    private async Task SetupRovingTabindex()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", $@"
+            (function() {{
+                const group = document.getElementById('{Id}');
+                if (!group) return;
+                
+                const buttons = group.querySelectorAll('button:not([disabled])');
+                let currentIndex = 0;
+                
+                // Set initial tabindex values
+                buttons.forEach((btn, index) => {{
+                    btn.tabIndex = index === 0 ? 0 : -1;
+                }});
+                
+                // Handle focus events
+                buttons.forEach((btn, index) => {{
+                    btn.addEventListener('focus', () => {{
+                        currentIndex = index;
+                        updateTabindex();
+                    }});
+                }});
+                
+                function updateTabindex() {{
+                    buttons.forEach((btn, index) => {{
+                        btn.tabIndex = index === currentIndex ? 0 : -1;
+                    }});
+                }}
+                
+                // Store reference for arrow key navigation
+                group._buttonNavigation = {{
+                    buttons: buttons,
+                    currentIndex: () => currentIndex,
+                    setCurrentIndex: (index) => {{ 
+                        currentIndex = index; 
+                        updateTabindex();
+                        buttons[index].focus();
+                    }},
+                    getButtonCount: () => buttons.length
+                }};
+            }})();
+        ");
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!EnableArrowKeys) return;
+
+        var isHorizontal = Orientation == "horizontal";
+        var isNavigationKey = false;
+        var direction = 0;
+
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+                if (isHorizontal)
+                {
+                    direction = -1;
+                    isNavigationKey = true;
+                }
+                break;
+            case "ArrowRight":
+                if (isHorizontal)
+                {
+                    direction = 1;
+                    isNavigationKey = true;
+                }
+                break;
+            case "ArrowUp":
+                if (!isHorizontal)
+                {
+                    direction = -1;
+                    isNavigationKey = true;
+                }
+                break;
+            case "ArrowDown":
+                if (!isHorizontal)
+                {
+                    direction = 1;
+                    isNavigationKey = true;
+                }
+                break;
+            case "Home":
+                await JSRuntime.InvokeVoidAsync("eval", $@"
+                    const group = document.getElementById('{Id}');
+                    if (group && group._buttonNavigation) {{
+                        group._buttonNavigation.setCurrentIndex(0);
+                    }}
+                ");
+                isNavigationKey = true;
+                break;
+            case "End":
+                await JSRuntime.InvokeVoidAsync("eval", $@"
+                    const group = document.getElementById('{Id}');
+                    if (group && group._buttonNavigation) {{
+                        const count = group._buttonNavigation.getButtonCount();
+                        group._buttonNavigation.setCurrentIndex(count - 1);
+                    }}
+                ");
+                isNavigationKey = true;
+                break;
+        }
+
+        if (isNavigationKey && direction != 0)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                const group = document.getElementById('{Id}');
+                if (group && group._buttonNavigation) {{
+                    const currentIndex = group._buttonNavigation.currentIndex();
+                    const count = group._buttonNavigation.getButtonCount();
+                    let newIndex = (currentIndex + {direction} + count) % count;
+                    group._buttonNavigation.setCurrentIndex(newIndex);
+                }}
+            ");
+        }
+
+        if (isNavigationKey)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "arguments[0].preventDefault()", e);
+        }
+    }
+}

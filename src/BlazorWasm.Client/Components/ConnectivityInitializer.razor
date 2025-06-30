@@ -1,0 +1,14 @@
+@using BlazorWasm.Client.Services
+@inject IConnectivityService ConnectivityService
+
+@* This component initializes the connectivity service when the app starts *@
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ConnectivityService.InitializeAsync();
+        }
+    }
+}

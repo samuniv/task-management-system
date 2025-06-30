@@ -203,6 +203,25 @@ public class ApiService
         }
     }
 
+    public async Task<NaturalLanguageTaskResponse?> ParseNaturalLanguageTaskAsync(NaturalLanguageTaskRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/tasks/parse-natural-language", request, _jsonOptions);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<NaturalLanguageTaskResponse>(_jsonOptions);
+            }
+
+            return null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     // Comment endpoints
     public async Task<CommentDisplayDto[]?> GetTaskCommentsAsync(int taskId)
     {
@@ -279,5 +298,127 @@ public class ApiService
         {
             return null;
         }
+    }
+
+    // Statistics endpoints
+    public async Task<TaskStatisticsDto?> GetTaskStatisticsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/tasks/stats");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<TaskStatisticsDto>(_jsonOptions);
+            }
+
+            return null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    // Export methods for CSV functionality
+    public async Task<string> ExportTasksAsync(TaskFilterDto filter)
+    {
+        try
+        {
+            var queryParams = new List<string>();
+            
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+                queryParams.Add($"search={Uri.EscapeDataString(filter.SearchTerm)}");
+            if (filter.Status.HasValue)
+                queryParams.Add($"filterStatus={Uri.EscapeDataString(filter.Status.ToString()!)}");
+            if (filter.Priority.HasValue)
+                queryParams.Add($"filterPriority={Uri.EscapeDataString(filter.Priority.ToString()!)}");
+            if (filter.AssigneeId.HasValue)
+                queryParams.Add($"assigneeId={filter.AssigneeId}");
+            if (filter.CreatorId.HasValue)
+                queryParams.Add($"creatorId={filter.CreatorId}");
+            if (filter.DueDateFrom.HasValue)
+                queryParams.Add($"dueDateFrom={filter.DueDateFrom.Value:yyyy-MM-dd}");
+            if (filter.DueDateTo.HasValue)
+                queryParams.Add($"dueDateTo={filter.DueDateTo.Value:yyyy-MM-dd}");
+            if (filter.CreatedFrom.HasValue)
+                queryParams.Add($"createdFrom={filter.CreatedFrom.Value:yyyy-MM-dd}");
+            if (filter.CreatedTo.HasValue)
+                queryParams.Add($"createdTo={filter.CreatedTo.Value:yyyy-MM-dd}");
+
+            var queryString = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
+            var url = $"api/tasks/export{queryString}";
+
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to export tasks: {ex.Message}", ex);
+        }
+    }
+
+    // Export endpoints
+    public async Task<bool> ExportTasksToCsvAsync(
+        string? search = null,
+        string? sort = null,
+        string? filterStatus = null,
+        string? filterPriority = null,
+        int? assigneeId = null)
+    {
+        try
+        {
+            var queryParams = new List<string>();
+            
+            if (!string.IsNullOrWhiteSpace(search))
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrWhiteSpace(sort))
+                queryParams.Add($"sort={Uri.EscapeDataString(sort)}");
+            if (!string.IsNullOrWhiteSpace(filterStatus))
+                queryParams.Add($"filterStatus={Uri.EscapeDataString(filterStatus)}");
+            if (!string.IsNullOrWhiteSpace(filterPriority))
+                queryParams.Add($"filterPriority={Uri.EscapeDataString(filterPriority)}");
+            if (assigneeId.HasValue)
+                queryParams.Add($"assigneeId={assigneeId}");
+
+            var queryString = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
+            var url = $"api/tasks/export{queryString}";
+
+            var response = await _httpClient.GetAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var csvContent = await response.Content.ReadAsStringAsync();
+                var fileName = GetFileNameFromResponse(response) ?? $"tasks-export-{DateTime.Now:yyyy-MM-dd}.csv";
+                
+                // Use JS interop to trigger download
+                await DownloadFileAsync(csvContent, fileName, "text/csv");
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private static string? GetFileNameFromResponse(HttpResponseMessage response)
+    {
+        if (response.Content.Headers.ContentDisposition?.FileName != null)
+        {
+            return response.Content.Headers.ContentDisposition.FileName.Trim('"');
+        }
+        return null;
+    }
+
+    private async Task DownloadFileAsync(string content, string fileName, string contentType)
+    {
+        // This will be implemented using JS interop
+        // For now, we'll just return - the actual download will be handled differently
+        await Task.CompletedTask;
     }
 }

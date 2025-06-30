@@ -1,28 +1,45 @@
+@inject ILocalizationService LocalizationService
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">Task Manager</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        <a class="navbar-brand" href="" aria-label="Task Manager - Home">Task Manager</a>
+        <button title="@LocalizationService.GetString("Navigation.ToggleMenu")" 
+                class="navbar-toggler" 
+                @onclick="ToggleNavMenu"
+                aria-expanded="@(!collapseNavMenu)"
+                aria-controls="navigation-menu"
+                aria-label="@LocalizationService.GetString("Navigation.ToggleMenu")">
             <span class="navbar-toggler-icon"></span>
         </button>
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
+<div class="@NavMenuCssClass nav-scrollable" 
+     id="navigation-menu"
+     @onclick="ToggleNavMenu">
+    <nav class="flex-column" role="navigation" aria-label="@LocalizationService.GetString("Navigation.Main")">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" aria-label="@LocalizationService.GetString("Navigation.Home")">
+                <span class="oi oi-home" aria-hidden="true"></span> @LocalizationService.GetString("Navigation.Home")
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="tasks">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Tasks
+            <NavLink class="nav-link" href="tasks" aria-label="@LocalizationService.GetString("Navigation.Tasks")">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> @LocalizationService.GetString("Navigation.Tasks")
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="dashboard">
-                <span class="oi oi-dashboard" aria-hidden="true"></span> Dashboard
+            <NavLink class="nav-link" href="dashboard" aria-label="@LocalizationService.GetString("Navigation.Dashboard")">
+                <span class="oi oi-dashboard" aria-hidden="true"></span> @LocalizationService.GetString("Navigation.Dashboard")
             </NavLink>
+        </div>
+        
+        <!-- Accessibility Controls -->
+        <div class="nav-item px-3 mt-3" role="group" aria-label="@LocalizationService.GetString("Navigation.Accessibility")">
+            <div class="d-flex flex-column gap-2">
+                <label class="form-label text-light small">@LocalizationService.GetString("Navigation.Accessibility")</label>
+                <ThemeToggle ShowText="true" ShowKeyboardShortcut="false" />
+            </div>
         </div>
     </nav>
 </div>

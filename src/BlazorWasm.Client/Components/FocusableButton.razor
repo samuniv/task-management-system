@@ -1,0 +1,88 @@
+@using BlazorWasm.Client.Services
+@inject IFocusManagementService FocusManagement
+
+<button type="@Type" 
+        class="@CssClass @(IsFocused ? "tab-enhanced" : "")" 
+        id="@Id"
+        disabled="@Disabled"
+        aria-label="@AriaLabel"
+        aria-describedby="@AriaDescribedBy"
+        aria-expanded="@AriaExpanded"
+        aria-controls="@AriaControls"
+        @onclick="OnClickInternal"
+        @onkeydown="OnKeyDown"
+        @onfocus="OnFocus"
+        @onblur="OnBlur"
+        tabindex="@TabIndex">
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string CssClass { get; set; } = "btn";
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+    [Parameter] public bool? AriaExpanded { get; set; }
+    [Parameter] public string? AriaControls { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public int TabIndex { get; set; } = 0;
+    [Parameter] public bool EnhanceKeyboardNav { get; set; } = true;
+
+    private bool IsFocused { get; set; } = false;
+
+    private async Task OnClickInternal()
+    {
+        if (!Disabled && OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!Disabled && EnhanceKeyboardNav)
+        {
+            switch (e.Key)
+            {
+                case "Enter":
+                case " ": // Space
+                    // Note: preventDefault would need to be handled via JS interop
+                    await OnClickInternal();
+                    break;
+                
+                case "Escape":
+                    // Handle escape for modal buttons, dropdowns, etc.
+                    if (AriaExpanded == true)
+                    {
+                        AriaExpanded = false;
+                        StateHasChanged();
+                    }
+                    break;
+            }
+        }
+    }
+
+    private void OnFocus()
+    {
+        IsFocused = true;
+        StateHasChanged();
+    }
+
+    private void OnBlur()
+    {
+        IsFocused = false;
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Generate ID if not provided
+        if (string.IsNullOrEmpty(Id))
+        {
+            Id = $"btn-{Guid.NewGuid():N}";
+        }
+    }
+}

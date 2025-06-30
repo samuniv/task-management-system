@@ -1,0 +1,146 @@
+@using Microsoft.Extensions.Localization
+@using System.Globalization
+@inject ILocalizationService LocalizationService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="language-selector">
+    <button @onclick="ToggleDropdown" 
+            class="btn btn-outline-secondary dropdown-toggle" 
+            type="button" 
+            aria-expanded="@_isDropdownOpen"
+            aria-haspopup="true"
+            aria-label="@LocalizationService.GetString("Language.Select")">
+        @_currentLanguageDisplay
+    </button>
+    
+    @if (_isDropdownOpen)
+    {
+        <div class="dropdown-menu show position-absolute" style="top: 100%; left: 0; z-index: 1000;">
+            @foreach (var culture in LocalizationService.SupportedCultures)
+            {
+                <button class="dropdown-item @(_currentCulture.Name == culture.Name ? "active" : "")" 
+                        @onclick="() => ChangeCultureAsync(culture.Name)"
+                        type="button">
+                    @GetLanguageDisplayName(culture.Name)
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isDropdownOpen = false;
+    private CultureInfo _currentCulture = CultureInfo.CurrentUICulture;
+    private string _currentLanguageDisplay = "";
+
+    protected override void OnInitialized()
+    {
+        LocalizationService.CultureChanged += OnCultureChanged;
+        UpdateLanguageDisplay();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Load saved culture from localStorage
+            var savedCulture = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "culture");
+            if (!string.IsNullOrEmpty(savedCulture) && savedCulture != _currentCulture.Name)
+            {
+                await ChangeCultureAsync(savedCulture);
+            }
+        }
+    }
+
+    private void ToggleDropdown()
+    {
+        _isDropdownOpen = !_isDropdownOpen;
+    }
+
+    private async Task ChangeCultureAsync(string cultureName)
+    {
+        if (cultureName == _currentCulture.Name)
+        {
+            _isDropdownOpen = false;
+            return;
+        }
+
+        // Save to localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "culture", cultureName);
+
+        // Update culture
+        await LocalizationService.SetCultureAsync(cultureName);
+        
+        _isDropdownOpen = false;
+        
+        // Force page reload to apply new culture
+        await JSRuntime.InvokeVoidAsync("location.reload");
+    }
+
+    private void OnCultureChanged(CultureInfo newCulture)
+    {
+        _currentCulture = newCulture;
+        UpdateLanguageDisplay();
+        StateHasChanged();
+    }
+
+    private void UpdateLanguageDisplay()
+    {
+        _currentLanguageDisplay = GetLanguageDisplayName(_currentCulture.Name);
+    }
+
+    private string GetLanguageDisplayName(string cultureName)
+    {
+        return cultureName switch
+        {
+            "en-US" => LocalizationService.GetString("Language.English"),
+            "fr-FR" => LocalizationService.GetString("Language.French"),
+            _ => cultureName
+        };
+    }
+
+    public void Dispose()
+    {
+        LocalizationService.CultureChanged -= OnCultureChanged;
+    }
+}
+
+<style>
+    .language-selector {
+        position: relative;
+        display: inline-block;
+    }
+
+    .language-selector .dropdown-menu {
+        min-width: 140px;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.375rem;
+        background-color: var(--bs-body-bg);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .language-selector .dropdown-item {
+        padding: 0.375rem 0.75rem;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        color: var(--bs-body-color);
+        transition: background-color 0.15s ease-in-out;
+    }
+
+    .language-selector .dropdown-item:hover {
+        background-color: var(--bs-secondary-bg);
+    }
+
+    .language-selector .dropdown-item.active {
+        background-color: var(--bs-primary);
+        color: var(--bs-white);
+    }
+
+    .language-selector .dropdown-item:focus {
+        outline: 2px solid var(--bs-primary);
+        outline-offset: -2px;
+    }
+</style>

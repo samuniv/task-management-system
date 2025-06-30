@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Localization;
+using System.Globalization;
 using BlazorWasm.Client;
 using BlazorWasm.Client.Services;
 
@@ -42,5 +44,25 @@ builder.Services.AddAuthorizationCore();
 
 // Register notification service
 builder.Services.AddSingleton<INotificationService, NotificationService>();
+
+// Register focus management service
+builder.Services.AddScoped<IFocusManagementService, FocusManagementService>();
+
+// Register theme service
+builder.Services.AddScoped<IThemeService, ThemeService>();
+
+// Configure localization services
+builder.Services.AddLocalization();
+
+// Register localization service
+builder.Services.AddScoped<ILocalizationService, LocalizationService>();
+
+// Register connectivity service
+builder.Services.AddScoped<IConnectivityService, ConnectivityService>();
+
+// Set default culture
+var defaultCulture = "en-US";
+CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(defaultCulture);
+CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(defaultCulture);
 
 await builder.Build().RunAsync();

@@ -4,32 +4,62 @@
 @inject ApiService ApiService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
+@inject NotificationService NotificationService
+@inject IFocusManagementService FocusManagement
+@inject ILocalizationService LocalizationService
 @implements IDisposable
 
-<PageTitle>Tasks</PageTitle>
+<PageTitle>@LocalizationService.GetString("Tasks.Title")</PageTitle>
 
 <div class="task-list-container">
-    <div class="task-list-header">
+    <header class="task-list-header">
         <div class="header-left">
-            <h1>Task Management</h1>
+            <h1 id="page-title">@LocalizationService.GetString("Tasks.Title")</h1>
         </div>
         <div class="header-right">
-            <button class="btn btn-primary" @onclick="CreateNewTask">
-                <i class="fas fa-plus"></i> New Task
+            <button class="btn btn-outline-secondary me-2" 
+                    @onclick="ExportTasks" 
+                    disabled="@IsExporting"
+                    aria-describedby="export-status">
+                @if (IsExporting)
+                {
+                    <div class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true">
+                        <span class="visually-hidden">@LocalizationService.GetString("Message.Exporting")</span>
+                    </div>
+                }
+                else
+                {
+                    <i class="fas fa-download me-1" aria-hidden="true"></i>
+                }
+                @LocalizationService.GetString("Tasks.Export")
+            </button>
+            <button class="btn btn-primary" @onclick="CreateNewTask" aria-label="@LocalizationService.GetString("Tasks.CreateNew")">
+                <i class="fas fa-plus" aria-hidden="true"></i> @LocalizationService.GetString("Tasks.CreateNew")
             </button>
         </div>
-    </div>
+    </header>
     
-    <div class="task-controls">
+    <section class="task-controls" aria-labelledby="filter-section-title">
+        <h2 id="filter-section-title" class="visually-hidden">@LocalizationService.GetString("Tasks.FilterAndSearch")</h2>
         <div class="search-filter-section">
             <div class="search-filter-section">
                 <div class="search-box">
-                    <input type="text" placeholder="Search tasks..." class="form-control" 
-                           @bind="searchTerm" @oninput="OnSearchInput" />
+                    <label for="task-search" class="visually-hidden">@LocalizationService.GetString("Tasks.Search.Placeholder")</label>
+                    <input type="text" 
+                           id="task-search"
+                           placeholder="@LocalizationService.GetString("Tasks.Search.Placeholder")" 
+                           class="form-control" 
+                           @bind="searchTerm" 
+                           @oninput="OnSearchInput"
+                           aria-describedby="search-help" />
+                    <div id="search-help" class="visually-hidden">
+                        Search by task title or description. Results update automatically as you type.
+                    </div>
                 </div>
                 
                 <div class="filter-controls">
-                    <select class="form-select" @bind="statusFilter" @bind:after="OnFilterChanged">
+                    <label for="status-filter" class="visually-hidden">Filter by status</label>
+                    <select id="status-filter" class="form-select" @bind="statusFilter" @bind:after="OnFilterChanged">
                         <option value="">All Status</option>
                         <option value="Pending">Pending</option>
                         <option value="InProgress">In Progress</option>
@@ -37,7 +67,8 @@
                         <option value="Done">Done</option>
                     </select>
                     
-                    <select class="form-select" @bind="priorityFilter" @bind:after="OnFilterChanged">
+                    <label for="priority-filter" class="visually-hidden">Filter by priority</label>
+                    <select id="priority-filter" class="form-select" @bind="priorityFilter" @bind:after="OnFilterChanged">
                         <option value="">All Priority</option>
                         <option value="Low">Low</option>
                         <option value="Medium">Medium</option>
@@ -45,7 +76,8 @@
                         <option value="Critical">Critical</option>
                     </select>
                     
-                    <select class="form-select" @bind="assigneeFilter" @bind:after="OnFilterChanged">
+                    <label for="assignee-filter" class="visually-hidden">Filter by assignee</label>
+                    <select id="assignee-filter" class="form-select" @bind="assigneeFilter" @bind:after="OnFilterChanged">
                         <option value="">All Assignees</option>
                         <option value="unassigned">Unassigned</option>
                         <!-- TODO: Load dynamic assignee list -->
@@ -54,27 +86,27 @@
             </div>
             
             <div class="action-buttons">
-                <button class="btn btn-primary" @onclick="CreateNewTask">
-                    <i class="fas fa-plus"></i> New Task
+                <button class="btn btn-primary" @onclick="CreateNewTask" aria-label="Create new task">
+                    <i class="fas fa-plus" aria-hidden="true"></i> New Task
                 </button>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div class="task-list-content">
+    <main class="task-list-content" aria-labelledby="page-title">
         @if (isLoading)
         {
-            <div class="loading-indicator">
-                <div class="spinner"></div>
+            <div class="loading-indicator" role="status" aria-live="polite">
+                <div class="spinner" aria-hidden="true"></div>
                 <span>Loading tasks...</span>
             </div>
         }
         else if (errorMessage != null)
         {
-            <div class="alert alert-danger" role="alert">
-                <i class="fas fa-exclamation-triangle"></i>
+            <div class="alert alert-danger" role="alert" aria-live="assertive">
+                <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
                 @errorMessage
-                <button class="btn btn-sm btn-outline-danger ms-2" @onclick="LoadTasks">
+                <button class="btn btn-sm btn-outline-danger ms-2" @onclick="LoadTasks" aria-label="Retry loading tasks">
                     Retry
                 </button>
             </div>
@@ -82,50 +114,72 @@
         else
         {
             <div class="task-table-container">
-                <table class="table table-striped table-hover">
+                <table class="table table-striped table-hover" 
+                       role="table" 
+                       aria-label="Task list"
+                       aria-describedby="table-description">
+                    <caption id="table-description" class="visually-hidden">
+                        Table showing @(totalCount) tasks with columns for title, status, priority, assignee, due date, created date, and actions. 
+                        Click column headers to sort. Use Tab to navigate through the table.
+                    </caption>
                     <thead>
                         <tr>
                             <th scope="col">
-                                <span class="sortable" @onclick="() => SetSort(nameof(TaskDto.Title))">
+                                <button class="btn btn-link sortable-button" 
+                                        @onclick="() => SetSort(nameof(TaskDto.Title))"
+                                        type="button"
+                                        aria-label="Sort by title @(currentSort == nameof(TaskDto.Title) ? (sortDirection == "asc" ? "descending" : "ascending") : "ascending")">
                                     Title
                                     @if (currentSort == nameof(TaskDto.Title))
                                     {
-                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")"></i>
+                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")" 
+                                           aria-hidden="true"
+                                           title="@(sortDirection == "asc" ? "Sorted ascending" : "Sorted descending")"></i>
                                     }
                                     else
                                     {
-                                        <i class="fas fa-sort"></i>
+                                        <i class="fas fa-sort" aria-hidden="true" title="Click to sort"></i>
                                     }
-                                </span>
+                                </button>
                             </th>
                             <th scope="col">Status</th>
                             <th scope="col">Priority</th>
                             <th scope="col">Assignee</th>
                             <th scope="col">
-                                <span class="sortable" @onclick="() => SetSort(nameof(TaskDto.DueDate))">
+                                <button class="btn btn-link sortable-button" 
+                                        @onclick="() => SetSort(nameof(TaskDto.DueDate))"
+                                        type="button"
+                                        aria-label="Sort by due date @(currentSort == nameof(TaskDto.DueDate) ? (sortDirection == "asc" ? "descending" : "ascending") : "ascending")">
                                     Due Date
                                     @if (currentSort == nameof(TaskDto.DueDate))
                                     {
-                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")"></i>
+                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")" 
+                                           aria-hidden="true"
+                                           title="@(sortDirection == "asc" ? "Sorted ascending" : "Sorted descending")"></i>
                                     }
                                     else
                                     {
-                                        <i class="fas fa-sort"></i>
+                                        <i class="fas fa-sort" aria-hidden="true" title="Click to sort"></i>
                                     }
-                                </span>
+                                </button>
                             </th>
                             <th scope="col">
-                                <span class="sortable" @onclick="() => SetSort(nameof(TaskDto.CreatedAt))">
+                                <button class="btn btn-link sortable-button" 
+                                        @onclick="() => SetSort(nameof(TaskDto.CreatedAt))"
+                                        type="button"
+                                        aria-label="Sort by creation date @(currentSort == nameof(TaskDto.CreatedAt) ? (sortDirection == "asc" ? "descending" : "ascending") : "ascending")">
                                     Created
                                     @if (currentSort == nameof(TaskDto.CreatedAt))
                                     {
-                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")"></i>
+                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")" 
+                                           aria-hidden="true"
+                                           title="@(sortDirection == "asc" ? "Sorted ascending" : "Sorted descending")"></i>
                                     }
                                     else
                                     {
-                                        <i class="fas fa-sort"></i>
+                                        <i class="fas fa-sort" aria-hidden="true" title="Click to sort"></i>
                                     }
-                                </span>
+                                </button>
                             </th>
                             <th scope="col">Actions</th>
                         </tr>
@@ -138,24 +192,34 @@
                                 <tr>
                                     <td>
                                         <div class="task-title">
-                                            <a href="/tasks/@task.Id">@task.Title</a>
+                                            <a href="/tasks/@task.Id" aria-label="View details for task: @task.Title">@task.Title</a>
                                         </div>
                                         @if (!string.IsNullOrEmpty(task.Description))
                                         {
-                                            <div class="task-description">@task.Description</div>
+                                            <div class="task-description" aria-label="Description: @task.Description">@task.Description</div>
                                         }
                                     </td>
                                     <td>
-                                        <span class="badge @GetStatusBadgeClass(task.Status)">@GetStatusDisplayName(task.Status)</span>
+                                        <span class="badge @GetStatusBadgeClass(task.Status)" 
+                                              role="status" 
+                                              aria-label="Status: @GetStatusDisplayName(task.Status)">
+                                            @GetStatusDisplayName(task.Status)
+                                        </span>
                                     </td>
                                     <td>
-                                        <span class="badge @GetPriorityBadgeClass(task.Priority)">@task.Priority</span>
+                                        <span class="badge @GetPriorityBadgeClass(task.Priority)" 
+                                              aria-label="Priority: @task.Priority">
+                                            @task.Priority
+                                        </span>
                                     </td>
                                     <td>
                                         @if (!string.IsNullOrEmpty(task.AssigneeName))
                                         {
                                             <div class="assignee">
-                                                <img src="/images/avatar-placeholder.png" alt="Avatar" class="avatar" />
+                                                <img src="/images/avatar-placeholder.png" 
+                                                     alt="Avatar for @task.AssigneeName" 
+                                                     class="avatar"
+                                                     role="img" />
                                                 <span>@task.AssigneeName</span>
                                             </div>
                                         }
@@ -169,7 +233,8 @@
                                     <td>
                                         @if (task.DueDate.HasValue)
                                         {
-                                            <span class="due-date @(task.DueDate < DateTime.Now ? "due-soon" : "")">
+                                            <span class="due-date @(task.DueDate < DateTime.Now ? "due-soon" : "")"
+                                                  aria-label="Due date: @task.DueDate.Value.ToString("MMMM dd, yyyy") @(task.DueDate < DateTime.Now ? "- Overdue" : "")">
                                                 @task.DueDate.Value.ToString("MMM dd, yyyy")
                                             </span>
                                         }
@@ -179,15 +244,23 @@
                                         }
                                     </td>
                                     <td>
-                                        <span class="created-date">@task.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                        <span class="created-date" aria-label="Created on @task.CreatedAt.ToString("MMMM dd, yyyy")">
+                                            @task.CreatedAt.ToString("MMM dd, yyyy")
+                                        </span>
                                     </td>
                                     <td>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-sm btn-outline-primary" title="Edit" @onclick="() => EditTask(task.Id)">
-                                                <i class="fas fa-edit"></i>
+                                        <div class="action-buttons" role="group" aria-label="Actions for @task.Title">
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    @onclick="() => EditTask(task.Id)"
+                                                    aria-label="Edit task: @task.Title">
+                                                <i class="fas fa-edit" aria-hidden="true"></i>
+                                                <span class="visually-hidden">Edit</span>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => DeleteTask(task.Id)">
-                                                <i class="fas fa-trash"></i>
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    @onclick="() => DeleteTask(task.Id)"
+                                                    aria-label="Delete task: @task.Title">
+                                                <i class="fas fa-trash" aria-hidden="true"></i>
+                                                <span class="visually-hidden">Delete</span>
                                             </button>
                                         </div>
                                     </td>
@@ -204,7 +277,7 @@
                                     }
                                     else
                                     {
-                                        <span>No tasks available. <button class="btn btn-link" @onclick="CreateNewTask">Create your first task</button></span>
+                                        <span>No tasks available. <button class="btn btn-link" @onclick="CreateNewTask" aria-label="Create your first task">Create your first task</button></span>
                                     }
                                 </td>
                             </tr>
@@ -215,55 +288,63 @@
 
             @if (totalCount > 0)
             {
-                <div class="pagination-container">
-                    <div class="pagination-info">
+                <nav class="pagination-container" aria-label="Task pagination">
+                    <div class="pagination-info" aria-live="polite">
                         Showing @((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, totalCount) of @totalCount tasks
                     </div>
                     
-                    <nav aria-label="Task pagination">
-                        <ul class="pagination">
-                            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => GoToPage(currentPage - 1)" disabled="@(currentPage <= 1)">
-                                    Previous
+                    <ul class="pagination" role="navigation">
+                        <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                            <button class="page-link" 
+                                    @onclick="() => GoToPage(currentPage - 1)" 
+                                    disabled="@(currentPage <= 1)"
+                                    aria-label="Go to previous page">
+                                Previous
+                            </button>
+                        </li>
+                        
+                        @for (int pageNum = Math.Max(1, currentPage - 2); pageNum <= Math.Min(totalPages, currentPage + 2); pageNum++)
+                        {
+                            <li class="page-item @(pageNum == currentPage ? "active" : "")">
+                                <button class="page-link" 
+                                        @onclick="() => GoToPage(pageNum)"
+                                        aria-label="@(pageNum == currentPage ? $"Current page, page {pageNum}" : $"Go to page {pageNum}")"
+                                        aria-current="@(pageNum == currentPage ? "page" : null)">
+                                    @pageNum
                                 </button>
                             </li>
-                            
-                            @for (int pageNum = Math.Max(1, currentPage - 2); pageNum <= Math.Min(totalPages, currentPage + 2); pageNum++)
-                            {
-                                <li class="page-item @(pageNum == currentPage ? "active" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(pageNum)">
-                                        @pageNum
-                                    </button>
-                                </li>
-                            }
-                            
-                            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => GoToPage(currentPage + 1)" disabled="@(currentPage >= totalPages)">
-                                    Next
-                                </button>
-                            </li>
-                        </ul>
-                    </nav>
+                        }
+                        
+                        <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                            <button class="page-link" 
+                                    @onclick="() => GoToPage(currentPage + 1)" 
+                                    disabled="@(currentPage >= totalPages)"
+                                    aria-label="Go to next page">
+                                Next
+                            </button>
+                        </li>
+                    </ul>
                     
                     <div class="page-size-selector">
                         <label for="pageSize">Items per page:</label>
-                        <select id="pageSize" class="form-select form-select-sm" @bind="pageSize" @bind:after="OnPageSizeChanged">
+                        <select id="pageSize" class="form-select form-select-sm" @bind="pageSize" @bind:after="OnPageSizeChanged" aria-label="Select number of items to display per page">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
                             <option value="100">100</option>
                         </select>
                     </div>
-                </div>
+                </nav>
             }
         }
-    </div>
+    </main>
 </div>
 
 @code {
     // State variables
     private TaskDto[]? tasks;
     private bool isLoading = true;
+    private bool IsExporting = false;
     private string? errorMessage;
     
     // Pagination
@@ -277,6 +358,15 @@
     private string statusFilter = string.Empty;
     private string priorityFilter = string.Empty;
     private string assigneeFilter = string.Empty;
+    
+    // Properties for Export method compatibility
+    private string SearchTerm => searchTerm;
+    private BlazorWasm.Shared.Enums.TaskStatus? SelectedStatus => 
+        string.IsNullOrEmpty(statusFilter) ? null : Enum.Parse<BlazorWasm.Shared.Enums.TaskStatus>(statusFilter);
+    private Priority? SelectedPriority => 
+        string.IsNullOrEmpty(priorityFilter) ? null : Enum.Parse<Priority>(priorityFilter);
+    private int? SelectedAssigneeId => 
+        string.IsNullOrEmpty(assigneeFilter) || assigneeFilter == "unassigned" ? null : int.Parse(assigneeFilter);
     
     // Sorting
     private string currentSort = string.Empty;
@@ -449,6 +539,41 @@
             BlazorWasm.Shared.Enums.TaskStatus.InProgress => "In Progress",
             _ => status.ToString()
         };
+    }
+
+    private async Task ExportTasks()
+    {
+        try
+        {
+            IsExporting = true;
+            StateHasChanged();
+
+            // Get current filter state
+            var currentFilter = new TaskFilterDto
+            {
+                SearchTerm = SearchTerm,
+                Status = SelectedStatus,
+                Priority = SelectedPriority,
+                AssigneeId = SelectedAssigneeId
+            };
+
+            var csvData = await ApiService.ExportTasksAsync(currentFilter);
+            var fileName = $"tasks-export-{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.csv";
+            
+            // Create download using JavaScript interop
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, csvData, "text/csv");
+            
+            NotificationService.ShowSuccess("Tasks exported successfully!");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Export failed: {ex.Message}");
+        }
+        finally
+        {
+            IsExporting = false;
+            StateHasChanged();
+        }
     }
 
     public void Dispose()

@@ -425,7 +425,7 @@
           4,
           5
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -433,7 +433,7 @@
             "description": "Develop and test a new API endpoint that aggregates and returns the necessary statistical data for the dashboard charts.",
             "dependencies": [],
             "details": "Define the data model for the statistics. Implement the controller and service logic to query the database, perform aggregations (e.g., counts, sums, averages over time), and serialize the data into a JSON format suitable for chart consumption. Ensure the endpoint is performant and secure.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -441,7 +441,7 @@
             "description": "Add the Chart.js library to the Blazor project and create a JavaScript wrapper file to expose chart rendering functions that can be called from C#.",
             "dependencies": [],
             "details": "Include the Chart.js library script in the `_Host.cshtml` or `index.html` file. Create a new JavaScript file (e.g., `chartInterop.js`) in the `wwwroot` folder. In this file, define functions that accept chart configuration and data to initialize, update, and destroy Chart.js instances on specified canvas elements.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -451,7 +451,7 @@
               1
             ],
             "details": "Create a new Razor component (e.g., `Dashboard.razor`). Add the necessary HTML structure, including a `<canvas>` element for the chart. Implement the `OnInitializedAsync` lifecycle method to make an HTTP call to the new statistics API endpoint (from subtask 1) to fetch and store the chart data.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -462,7 +462,7 @@
               3
             ],
             "details": "Inject `IJSRuntime` into the `Dashboard.razor` component. After fetching the data (in subtask 3), call the `InvokeVoidAsync` method to execute the JavaScript functions defined in `chartInterop.js` (from subtask 2). Pass the canvas element ID and the prepared chart data and configuration as arguments to the JavaScript function.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -476,7 +476,7 @@
         "dependencies": [
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -490,43 +490,43 @@
           6,
           7
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
             "title": "Conduct Accessibility Audit and Implement ARIA Roles",
             "description": "Perform a comprehensive accessibility audit of the application to identify non-compliance with WCAG 2.1 AA standards. Remediate identified issues by implementing appropriate ARIA (Accessible Rich Internet Applications) roles, states, and properties.",
+            "details": "Use browser developer tools (e.g., Lighthouse, axe-core) to audit all major pages and components. Focus on: proper heading hierarchy, alt text for images, aria-label for interactive elements without visible text, aria-expanded for collapsible content, role attributes for custom components, and skip navigation links.",
+            "status": "done",
             "dependencies": [],
-            "details": "Use automated tools like Axe and manual testing with screen readers (NVDA, VoiceOver) to audit all user-facing components. Document findings and systematically apply ARIA attributes like 'role', 'aria-label', and 'aria-live' to enhance semantic meaning for assistive technologies.",
-            "status": "pending"
+            "parentTaskId": 11
           },
           {
             "id": 2,
             "title": "Implement Full Keyboard Navigation and Focus Management",
             "description": "Ensure all interactive elements are fully accessible and operable using only a keyboard. This includes implementing a logical focus order and providing clear, visible focus indicators.",
-            "dependencies": [
-              1
-            ],
-            "details": "Refactor components to correctly handle keyboard events (Tab, Shift+Tab, Enter, Space, Arrow keys). Ensure the tab order follows the visual layout logically. Implement a custom, highly visible ':focus-visible' style for all focusable elements to improve usability for keyboard-only users.",
-            "status": "pending"
+            "details": "Review all buttons, links, form inputs, modal dialogs, and custom components. Implement tabindex where needed, ensure proper focus trapping in modals, add visible focus outlines, test navigation through all workflows using only keyboard (Tab, Shift+Tab, Enter, Space, Escape), and implement focus management for dynamic content.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11
           },
           {
             "id": 3,
             "title": "Create and Integrate High-Contrast Theme",
             "description": "Develop a high-contrast theme that meets WCAG AAA contrast ratio requirements (7:1 for text). Implement a user-facing control to allow switching between the standard and high-contrast themes.",
-            "dependencies": [
-              1
-            ],
-            "details": "Define a new set of CSS variables or a separate stylesheet for the high-contrast mode. Verify that all text, icons, and UI control boundaries meet the required contrast ratios. Add a toggle switch in the application settings to enable the theme and persist the user's choice.",
-            "status": "pending"
+            "details": "Create a high-contrast.css file with increased contrast ratios, implement a theme switcher service in Blazor, add a toggle button in the main navigation, persist theme preference in localStorage, ensure all UI components (buttons, forms, charts, notifications) work with the high-contrast theme, and test with users who have visual impairments.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11
           },
           {
             "id": 4,
             "title": "Set Up .NET Localization Infrastructure and Refactor UI",
             "description": "Configure the .NET localization framework, including resource files (.resx) and middleware. Refactor all UI components and backend messages to pull text from these resource files instead of using hardcoded strings.",
+            "details": "Install Microsoft.Extensions.Localization packages, create Resources folder with .resx files for en-US and fr-FR, configure localization services in Program.cs, implement IStringLocalizer in Blazor components, create a language switcher component, handle date/time and number formatting, localize validation messages, and test culture switching throughout the application.",
+            "status": "done",
             "dependencies": [],
-            "details": "Configure `IStringLocalizer` and request localization middleware in the application's startup. Create initial .resx files for English and at least one other language. Systematically replace all hardcoded strings in Razor views, Blazor components, and C# code with keys that reference the resource files.",
-            "status": "pending"
+            "parentTaskId": 11
           }
         ]
       },
@@ -540,7 +540,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -555,7 +555,7 @@
           6,
           7
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -563,7 +563,7 @@
             "description": "Create the initial CI/CD pipeline configuration file. Define jobs to checkout code, install dependencies, and run unit tests on every push to the main branches.",
             "dependencies": [],
             "details": "Define the pipeline trigger events (e.g., on push to `main`, on pull requests). Add steps for `actions/checkout`, setting up the programming language environment (e.g., `setup-node`, `setup-python`), caching dependencies, and executing the unit test command (e.g., `npm test`, `pytest`).",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -573,7 +573,7 @@
               1
             ],
             "details": "Modify the pipeline configuration to include a `services` block. Define the service container image, ports, and any necessary environment variables or health checks. Update the integration test job to connect to this service container using the provided hostname and ports.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -581,7 +581,7 @@
             "description": "Securely store AWS credentials in the CI/CD platform's secret management system to enable authentication with AWS services like ECR.",
             "dependencies": [],
             "details": "Create an IAM user or role with permissions to push to ECR. Generate access keys or configure an OIDC provider. Add the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (or configure the OIDC role) as encrypted secrets in the repository or organization settings.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -592,7 +592,7 @@
               3
             ],
             "details": "Add a new job that runs after the test job succeeds. Use an action like `aws-actions/configure-aws-credentials` to log in. Add steps to log in to the ECR registry, build the Docker image using `docker build`, tag it appropriately (e.g., with the Git SHA), and push it using `docker push`.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
@@ -602,7 +602,7 @@
               4
             ],
             "details": "Create a final job in the workflow, conditioned on a specific trigger (e.g., push to `main` branch). This job will use the newly pushed Docker image from ECR. It will involve steps to update a service definition (e.g., an ECS task definition) and trigger a new deployment to update the running service.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -616,7 +616,7 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -624,7 +624,7 @@
             "description": "Create the initial service worker file (e.g., `service-worker.js`) and add the registration logic to the main application script to install it in the browser.",
             "dependencies": [],
             "details": "The registration script should check for service worker support in the browser. The service worker file itself will initially be a placeholder but should include basic lifecycle event listeners (install, activate, fetch) to build upon.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -634,7 +634,7 @@
               1
             ],
             "details": "Define a specific cache name for API data. The fetch event handler will need to intercept outgoing requests, identify GET requests to the API, and attempt to match them against the cache using `caches.match()`.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -644,7 +644,7 @@
               2
             ],
             "details": "After a successful network fetch (i.e., when the cache is missed), the response should be cloned and stored in the cache using `cache.put()`. This ensures the cache is updated with the latest data for subsequent offline use.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -654,7 +654,7 @@
               1
             ],
             "details": "Use the `navigator.onLine` property and listen for 'online' and 'offline' window events to toggle the state of the UI indicator. The indicator could be a simple banner, a toast notification, or an icon that provides clear feedback to the user.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -668,8 +668,51 @@
         "dependencies": [
           7
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up Azure OpenAI Integration",
+            "description": "Configure Azure OpenAI SDK and set up secure API key management for natural language processing.",
+            "details": "Install Azure.AI.OpenAI NuGet package, configure service registration, set up Azure Key Vault or environment variable configuration for API keys, and create a service interface for OpenAI operations.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 15
+          },
+          {
+            "id": 2,
+            "title": "Create Natural Language Parsing API Endpoint",
+            "description": "Create API endpoint for parsing natural language input and extracting structured task data.",
+            "details": "Implement POST /api/tasks/parse-natural-language endpoint that accepts user input, uses OpenAI to extract Title, Description, Assignee, and DueDate, and returns structured JSON response.",
+            "status": "done",
+            "dependencies": [
+              "15.1"
+            ],
+            "parentTaskId": 15
+          },
+          {
+            "id": 3,
+            "title": "Implement Client-Side Natural Language Input",
+            "description": "Implement UI for natural language task input with smart parsing integration.",
+            "details": "Add text input field to task creation form, implement call to parsing API, handle loading states and errors, pre-populate form fields with parsed data, and provide user feedback.",
+            "status": "done",
+            "dependencies": [
+              "15.2"
+            ],
+            "parentTaskId": 15
+          },
+          {
+            "id": 4,
+            "title": "Add Unit Tests for Natural Language Parsing",
+            "description": "Create comprehensive unit tests for the natural language parsing functionality.",
+            "details": "Write unit tests that mock OpenAI client, test various input scenarios (with/without dates, assignees, complex descriptions), verify parsing accuracy ≥90%, and test error handling scenarios.",
+            "status": "done",
+            "dependencies": [
+              "15.2"
+            ],
+            "parentTaskId": 15
+          }
+        ]
       },
       {
         "id": 16,
@@ -687,7 +730,7 @@
     ],
     "metadata": {
       "created": "2025-06-29T18:19:11.941Z",
-      "updated": "2025-06-30T03:31:10.001Z",
+      "updated": "2025-06-30T15:57:32.466Z",
       "description": "Tasks for master context"
     }
   }

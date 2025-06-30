@@ -1,19 +1,45 @@
 @inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
+    <!-- Enhanced skip links for keyboard users -->
+    <a href="#main-content" 
+       class="skip-link visually-hidden-focusable" 
+       tabindex="1">
+        Skip to main content
+    </a>
+    
+    <a href="#navigation" 
+       class="skip-link visually-hidden-focusable" 
+       tabindex="2">
+        Skip to navigation
+    </a>
+    
+    <div id="navigation" class="sidebar" role="navigation" aria-label="Main navigation">
         <NavMenu />
     </div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+    <main id="main-content" role="main" tabindex="-1">
+        <div class="top-row px-4" role="banner">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="https://docs.microsoft.com/aspnet/" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   aria-label="Learn more about ASP.NET Core (opens in new tab)">
+                    About
+                </a>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <ConnectivityIndicator />
+                    <LanguageSelector />
+                    <ThemeToggle />
+                </div>
+            </div>
         </div>
 
-        <article class="content px-4">
+        <article class="content px-4" role="main">
             @Body
         </article>
     </main>
 </div>
 
-<ToastNotifications />
+<ToastNotifications role="status" aria-live="polite" />

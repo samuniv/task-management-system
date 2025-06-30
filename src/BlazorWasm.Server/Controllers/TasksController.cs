@@ -5,9 +5,13 @@ using BlazorWasm.Shared.Models;
 using BlazorWasm.Shared.Enums;
 using BlazorWasm.Server.Data;
 using BlazorWasm.Shared.DTOs;
+using BlazorWasm.Server.Services;
 using System.Security.Claims;
 using TaskStatus = BlazorWasm.Shared.Enums.TaskStatus;
 using Markdig;
+using CsvHelper;
+using System.Globalization;
+using System.Text;
 
 namespace BlazorWasm.Server.Controllers;
 
@@ -492,6 +496,327 @@ public class TasksController : ControllerBase
         {
             _logger.LogError(ex, "Error adding comment to task {TaskId}", id);
             return StatusCode(500, new { message = "Error adding comment" });
+        }
+    }
+
+    /// <summary>
+    /// Get task statistics for dashboard
+    /// </summary>
+    [HttpGet("stats")]
+    [Authorize(Policy = "CanManageTasks")]
+    public async Task<IActionResult> GetTaskStatistics()
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var isAdmin = User.IsInRole("Admin");
+
+            // Base query - filter by user if not admin
+            var tasksQuery = _context.Tasks.Where(t => !t.IsDeleted);
+            if (!isAdmin)
+            {
+                tasksQuery = tasksQuery.Where(t => t.AssigneeId == userId || t.CreatorId == userId);
+            }
+
+            var tasks = await tasksQuery.ToListAsync();
+            var now = DateTime.UtcNow;
+
+            // Status statistics
+            var statusStats = new TaskStatusStatsDto
+            {
+                Pending = tasks.Count(t => t.Status == TaskStatus.Pending),
+                InProgress = tasks.Count(t => t.Status == TaskStatus.InProgress),
+                Done = tasks.Count(t => t.Status == TaskStatus.Done),
+                Cancelled = tasks.Count(t => t.Status == TaskStatus.Cancelled)
+            };
+
+            // Priority statistics
+            var priorityStats = new TaskPriorityStatsDto
+            {
+                Low = tasks.Count(t => t.Priority == Priority.Low),
+                Medium = tasks.Count(t => t.Priority == Priority.Medium),
+                High = tasks.Count(t => t.Priority == Priority.High),
+                Critical = tasks.Count(t => t.Priority == Priority.Critical)
+            };
+
+            // Overview statistics
+            var totalTasks = tasks.Count;
+            var completedTasks = tasks.Count(t => t.Status == TaskStatus.Done);
+            var overdueTasks = tasks.Count(t => t.DueDate.HasValue && t.DueDate < now && t.Status != TaskStatus.Done);
+            var tasksDueToday = tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value.Date == now.Date);
+            var tasksDueThisWeek = tasks.Count(t => t.DueDate.HasValue && 
+                t.DueDate.Value >= now.Date && 
+                t.DueDate.Value <= now.Date.AddDays(7));
+
+            var overviewStats = new TaskOverviewStatsDto
+            {
+                TotalTasks = totalTasks,
+                CompletedTasks = completedTasks,
+                OverdueTasks = overdueTasks,
+                TasksDueToday = tasksDueToday,
+                TasksDueThisWeek = tasksDueThisWeek,
+                CompletionRate = totalTasks > 0 ? (double)completedTasks / totalTasks * 100 : 0
+            };
+
+            // Completion trend for last 30 days
+            var thirtyDaysAgo = now.AddDays(-30);
+            var completionTrend = new List<TaskCompletionTrendDto>();
+
+            for (int i = 29; i >= 0; i--)
+            {
+                var date = now.AddDays(-i).Date;
+                var completedOnDate = tasks.Count(t => t.UpdatedAt.Date == date && t.Status == TaskStatus.Done);
+                var createdOnDate = tasks.Count(t => t.CreatedAt.Date == date);
+
+                completionTrend.Add(new TaskCompletionTrendDto
+                {
+                    Date = date,
+                    CompletedTasks = completedOnDate,
+                    CreatedTasks = createdOnDate
+                });
+            }
+
+            var statistics = new TaskStatisticsDto
+            {
+                StatusStats = statusStats,
+                PriorityStats = priorityStats,
+                OverviewStats = overviewStats,
+                CompletionTrend = completionTrend
+            };
+
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving task statistics");
+            return StatusCode(500, new { message = "Error retrieving statistics" });
+        }
+    }
+
+    /// <summary>
+    /// Export tasks to CSV
+    /// </summary>
+    [HttpGet("export")]
+    [Authorize(Policy = "CanManageTasks")]
+    public async Task<IActionResult> ExportTasks(
+        [FromQuery] string? search = null,
+        [FromQuery] string? sort = "CreatedAt:desc",
+        [FromQuery] string? filterStatus = null,
+        [FromQuery] string? filterPriority = null,
+        [FromQuery] int? assigneeId = null)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var isAdmin = User.IsInRole("Admin");
+
+            // Set response headers for CSV download
+            Response.Headers["Content-Type"] = "text/csv; charset=utf-8";
+            Response.Headers["Content-Disposition"] = $"attachment; filename=\"tasks-export-{DateTime.UtcNow:yyyy-MM-dd}.csv\"";
+
+            // Stream CSV data directly to response
+            await using var writer = new StringWriter();
+            await using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+
+            // Write CSV header
+            csv.WriteHeader<TaskExportDto>();
+            await csv.NextRecordAsync();
+
+            // Get initial response body stream
+            var responseStream = Response.Body;
+            
+            // Process tasks in batches to handle large datasets efficiently
+            const int batchSize = 1000;
+            int skip = 0;
+            bool hasMoreData = true;
+
+            while (hasMoreData)
+            {
+                var tasks = await GetTasksForExportAsync(userId, isAdmin, search, sort, filterStatus, filterPriority, assigneeId, skip, batchSize);
+                
+                if (!tasks.Any())
+                {
+                    hasMoreData = false;
+                    break;
+                }
+
+                foreach (var task in tasks)
+                {
+                    csv.WriteRecord(task);
+                    await csv.NextRecordAsync();
+                }
+
+                // Write current batch to response stream
+                var csvContent = writer.ToString();
+                var bytes = Encoding.UTF8.GetBytes(csvContent);
+                await responseStream.WriteAsync(bytes);
+                await responseStream.FlushAsync();
+
+                // Clear the writer for the next batch
+                writer.GetStringBuilder().Clear();
+
+                skip += batchSize;
+                
+                if (tasks.Count() < batchSize)
+                {
+                    hasMoreData = false;
+                }
+            }
+
+            return new EmptyResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting tasks to CSV");
+            return StatusCode(500, new { message = "Error exporting tasks" });
+        }
+    }
+
+    private async Task<IEnumerable<TaskExportDto>> GetTasksForExportAsync(
+        int? userId, 
+        bool isAdmin, 
+        string? search, 
+        string? sort, 
+        string? filterStatus, 
+        string? filterPriority, 
+        int? assigneeId, 
+        int skip, 
+        int take)
+    {
+        var query = _context.Tasks
+            .Include(t => t.Assignee)
+            .Include(t => t.Creator)
+            .Include(t => t.Comments)
+            .Where(t => !t.IsDeleted);
+
+        // Apply user filtering for non-admins
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(t => t.AssigneeId == userId || t.CreatorId == userId);
+        }
+
+        // Apply search
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = search.ToLower();
+            query = query.Where(t => 
+                t.Title.ToLower().Contains(searchTerm) ||
+                t.Description.ToLower().Contains(searchTerm));
+        }
+
+        // Apply status filter
+        if (!string.IsNullOrWhiteSpace(filterStatus) && 
+            Enum.TryParse<TaskStatus>(filterStatus, true, out var status))
+        {
+            query = query.Where(t => t.Status == status);
+        }
+
+        // Apply priority filter
+        if (!string.IsNullOrWhiteSpace(filterPriority) && 
+            Enum.TryParse<Priority>(filterPriority, true, out var priority))
+        {
+            query = query.Where(t => t.Priority == priority);
+        }
+
+        // Apply assignee filter
+        if (assigneeId.HasValue)
+        {
+            query = query.Where(t => t.AssigneeId == assigneeId);
+        }
+
+        // Apply sorting
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            var sortParts = sort.Split(':');
+            var sortField = sortParts[0];
+            var sortDirection = sortParts.Length > 1 ? sortParts[1] : "asc";
+
+            query = sortField.ToLower() switch
+            {
+                "title" => sortDirection == "desc" 
+                    ? query.OrderByDescending(t => t.Title) 
+                    : query.OrderBy(t => t.Title),
+                "status" => sortDirection == "desc" 
+                    ? query.OrderByDescending(t => t.Status) 
+                    : query.OrderBy(t => t.Status),
+                "priority" => sortDirection == "desc" 
+                    ? query.OrderByDescending(t => t.Priority) 
+                    : query.OrderBy(t => t.Priority),
+                "duedate" => sortDirection == "desc" 
+                    ? query.OrderByDescending(t => t.DueDate) 
+                    : query.OrderBy(t => t.DueDate),
+                "updatedat" => sortDirection == "desc" 
+                    ? query.OrderByDescending(t => t.UpdatedAt) 
+                    : query.OrderBy(t => t.UpdatedAt),
+                _ => sortDirection == "desc" 
+                    ? query.OrderByDescending(t => t.CreatedAt) 
+                    : query.OrderBy(t => t.CreatedAt)
+            };
+        }
+        else
+        {
+            query = query.OrderByDescending(t => t.CreatedAt);
+        }
+
+        var tasks = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        return tasks.Select(t => new TaskExportDto
+        {
+            Id = t.Id,
+            Title = t.Title,
+            Description = t.Description,
+            Status = t.Status.ToString(),
+            Priority = t.Priority.ToString(),
+            AssigneeName = t.Assignee != null ? $"{t.Assignee.FirstName} {t.Assignee.LastName}".Trim() : "Unassigned",
+            CreatedBy = t.Creator != null ? $"{t.Creator.FirstName} {t.Creator.LastName}".Trim() : "Unknown",
+            CreatedAt = t.CreatedAt,
+            UpdatedAt = t.UpdatedAt,
+            DueDate = t.DueDate,
+            CommentCount = t.Comments.Count
+        });
+    }
+
+    /// <summary>
+    /// Parse natural language input into structured task data
+    /// </summary>
+    [HttpPost("parse-natural-language")]
+    [Authorize(Policy = "CanManageTasks")]
+    public async Task<IActionResult> ParseNaturalLanguage([FromBody] NaturalLanguageTaskRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Input))
+            {
+                return BadRequest(new { error = "Input text is required" });
+            }
+
+            _logger.LogInformation("Parsing natural language input: {Input}", request.Input);
+
+            var aiParsingService = HttpContext.RequestServices.GetRequiredService<IAITaskParsingService>();
+            var parsedResult = await aiParsingService.ParseNaturalLanguageAsync(request.Input);
+
+            // Convert to response DTO
+            var response = new NaturalLanguageTaskResponse
+            {
+                Title = parsedResult.Title ?? string.Empty,
+                Description = parsedResult.Description ?? string.Empty,
+                Assignee = parsedResult.Assignee ?? string.Empty,
+                Priority = parsedResult.Priority ?? Priority.Medium,
+                DueDate = parsedResult.DueDate,
+                OriginalInput = request.Input,
+                IsSuccess = !string.IsNullOrWhiteSpace(parsedResult.Title)
+            };
+
+            _logger.LogInformation("Successfully parsed task: {Title}", response.Title);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing natural language input: {Input}", request.Input);
+            return StatusCode(500, new { error = "An error occurred while parsing the input" });
         }
     }
 }
