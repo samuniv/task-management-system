@@ -197,7 +197,7 @@
         "dependencies": [
           3
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -215,7 +215,7 @@
               1
             ],
             "details": "The AuthService will contain methods like LoginAsync and LogoutAsync. Upon a successful login, it will be responsible for storing the received JWT (JSON Web Token) securely in the browser's local storage. It will also handle removing the token upon logout.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -225,7 +225,7 @@
               2
             ],
             "details": "This custom provider will override the GetAuthenticationStateAsync method. It will retrieve the token from local storage, parse it to create a ClaimsPrincipal, and use NotifyAuthenticationStateChanged to update the application's UI and authorization context, enabling features like AuthorizeView.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -236,7 +236,7 @@
               3
             ],
             "details": "This handler intercepts every HttpRequestMessage sent by the configured HttpClient. It retrieves the stored token and adds it to the request headers. This centralizes token management, keeping API call sites clean. This handler must be registered in Program.cs as part of the HttpClient service configuration.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -251,7 +251,7 @@
           4,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -259,7 +259,7 @@
             "description": "Create the basic static UI for the Task List component, including the table structure, headers, and placeholder rows for tasks. This should be a non-functional, visual representation.",
             "dependencies": [],
             "details": "Use HTML and CSS/Sass to structure the task list table with columns for task name, due date, priority, and status. Add placeholder content to visualize the final layout without any real data.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -269,7 +269,7 @@
               1
             ],
             "details": "Use an HTTP client (e.g., fetch or axios) to make a GET request to the task API. Manage loading and error states. On successful fetch, map the received data to the task rows in the component's state and render them dynamically.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -279,7 +279,7 @@
               2
             ],
             "details": "Create pagination components and manage the current page state. When a user interacts with the pagination controls, trigger a new API request with the appropriate page query parameter and update the displayed task list.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -289,7 +289,7 @@
               2
             ],
             "details": "Create input elements for search (text input) and filters (dropdowns for status, priority, etc.). Manage their state. Implement a debounce function for the search input to delay API calls until the user stops typing for a set duration (e.g., 300ms). Update the API request with search and filter query parameters to display the relevant tasks.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -304,7 +304,7 @@
           4,
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -312,7 +312,7 @@
             "description": "Create the main Blazor component (`EditForm`) for viewing and editing task details. This includes UI fields for title, description, due date, priority, and assignee, bound to a data model.",
             "dependencies": [],
             "details": "Build the UI layout using Blazor components. Bind the form fields to a data model representing the task. Do not implement validation or API calls in this step.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -322,7 +322,7 @@
               1
             ],
             "details": "Create a validator class for the task model using FluentValidation. Integrate it with the Blazor EditForm for client-side validation feedback. Ensure the same validator can be used on the server.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -332,7 +332,7 @@
               1
             ],
             "details": "Build a new Blazor component with an EditForm and a textarea for comment input. Create a model for the comment data. Implement basic form handling.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -342,7 +342,7 @@
               1
             ],
             "details": "Create a component to loop through and display a list of comments. Use a library like Markdig to convert Markdown to HTML. Sanitize the resulting HTML to prevent XSS attacks before rendering it.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
@@ -354,7 +354,7 @@
               4
             ],
             "details": "Implement HttpClient calls for: GET /api/tasks/{id}, PUT /api/tasks/{id}, GET /api/tasks/{id}/comments, and POST /api/tasks/{id}/comments. Wire these calls to the appropriate form submissions and component lifecycle events.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -368,8 +368,51 @@
         "dependencies": [
           5
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create NotificationService for Managing Toast Messages",
+            "description": "Create a singleton service to manage toast messages with methods for adding notifications and subscribing to changes",
+            "details": "Implement a service with events for adding success, error, warning, and info notifications. Include methods for clearing notifications and preventing duplicates.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8
+          },
+          {
+            "id": 2,
+            "title": "Develop Toast Notification Component",
+            "description": "Build a Blazor component that displays toast notifications with proper styling and animations",
+            "details": "Create a component that subscribes to NotificationService events and displays toasts with different styles for success, error, warning, and info messages. Include CSS transitions for smooth appearance and dismissal.",
+            "status": "done",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 3,
+            "title": "Integrate Notification System with Application",
+            "description": "Add the NotificationService to DI container and include the toast component in MainLayout",
+            "details": "Register the NotificationService as a singleton in Program.cs and add the toast notification component to MainLayout.razor so it's available on all pages.",
+            "status": "done",
+            "dependencies": [
+              "8.2"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 4,
+            "title": "Replace Console Logging with Toast Notifications",
+            "description": "Replace console.log statements in existing components with appropriate toast notifications",
+            "details": "Update TaskList, TaskDetail, and other components to use the NotificationService instead of console.log for user feedback on success/error operations.",
+            "status": "done",
+            "dependencies": [
+              "8.3"
+            ],
+            "parentTaskId": 8
+          }
+        ]
       },
       {
         "id": 9,
@@ -382,7 +425,7 @@
           4,
           5
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -644,7 +687,7 @@
     ],
     "metadata": {
       "created": "2025-06-29T18:19:11.941Z",
-      "updated": "2025-06-29T19:28:14.649Z",
+      "updated": "2025-06-30T03:31:10.001Z",
       "description": "Tasks for master context"
     }
   }

@@ -45,7 +45,7 @@ public class AuthController : ControllerBase
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-            
+
             if (!result.Succeeded)
             {
                 if (result.IsLockedOut)

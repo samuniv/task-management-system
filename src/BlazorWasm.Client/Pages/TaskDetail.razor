@@ -1,0 +1,328 @@
+@page "/tasks/{Id:int}"
+@page "/tasks/new"
+@using BlazorWasm.Shared.DTOs
+@using BlazorWasm.Shared.Enums
+@using BlazorWasm.Shared.Validators
+@using BlazorWasm.Client.Services
+@using FluentValidation
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Blazored.FluentValidation
+@using TaskStatus = BlazorWasm.Shared.Enums.TaskStatus
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject INotificationService NotificationService
+
+<div class="task-detail-container">
+    @if (IsLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading task details...</p>
+        </div>
+    }
+    else if (!IsNew && TaskModel.Id == 0)
+    {
+        <div class="error-message">
+            <h3>Task not found</h3>
+            <p>The requested task could not be found.</p>
+            <button class="btn btn-primary" @onclick="NavigateToTasks">Back to Tasks</button>
+        </div>
+    }
+    else
+    {
+        <div class="task-detail-header">
+            <h2>@(IsNew ? "Create New Task" : "Edit Task")</h2>
+            <div class="header-actions">
+                <button class="btn btn-secondary" @onclick="NavigateToTasks">
+                    <i class="icon-arrow-left"></i> Back to Tasks
+                </button>
+                @if (!IsNew)
+                {
+                    <button class="btn btn-danger" @onclick="DeleteTask" disabled="@IsSubmitting">
+                        <i class="icon-trash"></i> Delete
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="task-detail-content">
+            <div class="task-form-section">
+                <EditForm Model="TaskModel" OnValidSubmit="SaveTask" FormName="TaskEditForm">
+                    <FluentValidationValidator />
+
+                    <div class="form-group">
+                        <label for="title">Title *</label>
+                        <InputText id="title" @bind-Value="TaskModel.Title" class="form-control" disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => TaskModel.Title)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <InputTextArea id="description" @bind-Value="TaskModel.Description" class="form-control" rows="4" disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => TaskModel.Description)" />
+                        <small class="form-text text-muted">You can use Markdown formatting in the description.</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="status">Status</label>
+                            <InputSelect id="status" @bind-Value="TaskModel.Status" class="form-control" disabled="@IsSubmitting">
+                                @foreach (var status in Enum.GetValues<TaskStatus>())
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => TaskModel.Status)" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="priority">Priority</label>
+                            <InputSelect id="priority" @bind-Value="TaskModel.Priority" class="form-control" disabled="@IsSubmitting">
+                                @foreach (var priority in Enum.GetValues<Priority>())
+                                {
+                                    <option value="@priority">@priority</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => TaskModel.Priority)" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="assignee">Assignee</label>
+                            <InputSelect id="assignee" @bind-Value="TaskModel.AssigneeId" class="form-control" disabled="@IsSubmitting">
+                                <option value="">Select an assignee...</option>
+                                @if (Users != null)
+                                {
+                                    @foreach (var user in Users)
+                                    {
+                                        <option value="@user.Id">@user.Email</option>
+                                    }
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dueDate">Due Date</label>
+                            <InputDate id="dueDate" @bind-Value="TaskModel.DueDate" class="form-control" disabled="@IsSubmitting" />
+                            <ValidationMessage For="@(() => TaskModel.DueDate)" />
+                        </div>
+                    </div>
+
+                    @if (!IsNew)
+                    {
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Created</label>
+                                <p class="form-control-static">@TaskModel.CreatedAt.ToString("MMM dd, yyyy 'at' HH:mm") by @TaskModel.CreatorName</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Last Updated</label>
+                                <p class="form-control-static">@TaskModel.UpdatedAt.ToString("MMM dd, yyyy 'at' HH:mm")</p>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">
+                            @if (IsSubmitting)
+                            {
+                                <span class="spinner-small"></span>
+                            }
+                            @(IsNew ? "Create Task" : "Update Task")
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="NavigateToTasks" disabled="@IsSubmitting">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+
+            @if (!IsNew && TaskModel != null)
+            {
+                <div class="comments-section">
+                    <h3>Comments</h3>
+                    
+                    <TaskComments TaskId="@TaskModel.Id" />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private TaskEditDto TaskModel { get; set; } = new();
+    private UserDto[]? Users { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool IsSubmitting { get; set; } = false;
+    private bool IsNew => Id == 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+
+        if (IsNew)
+        {
+            TaskModel = new TaskEditDto();
+            IsLoading = false;
+        }
+        else
+        {
+            await LoadTask();
+        }
+    }
+
+    private async Task LoadTask()
+    {
+        if (Id <= 0) return;
+
+        IsLoading = true;
+        try
+        {
+            var task = await ApiService.GetTaskForEditAsync(Id);
+            if (task != null)
+            {
+                TaskModel = task;
+            }
+        }
+        catch (Exception)
+        {
+            // Task loading failed - will show not found message
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            Users = await ApiService.GetUsersAsync();
+        }
+        catch (Exception)
+        {
+            // Failed to load users - assignee dropdown will be empty
+        }
+    }
+
+    private async Task SaveTask()
+    {
+        IsSubmitting = true;
+        try
+        {
+            bool success;
+            if (IsNew)
+            {
+                var createDto = new CreateTaskDto
+                {
+                    Title = TaskModel.Title,
+                    Description = TaskModel.Description,
+                    Status = TaskModel.Status,
+                    Priority = TaskModel.Priority,
+                    AssigneeId = TaskModel.AssigneeId,
+                    DueDate = TaskModel.DueDate
+                };
+
+                var createdTask = await ApiService.CreateTaskAsync(createDto);
+                success = createdTask != null;
+                
+                if (success && createdTask != null)
+                {
+                    Navigation.NavigateTo($"/tasks/{createdTask.Id}");
+                    return;
+                }
+            }
+            else
+            {
+                success = await ApiService.UpdateTaskAsync(TaskModel.Id, TaskModel);
+            }
+
+            if (success)
+            {
+                ShowMessage("Task saved successfully!", "success");
+                if (!IsNew)
+                {
+                    await LoadTask(); // Refresh the task data
+                }
+            }
+            else
+            {
+                ShowMessage("Failed to save task. Please try again.", "error");
+            }
+        }
+        catch (Exception)
+        {
+            ShowMessage("An error occurred while saving the task.", "error");
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private async Task DeleteTask()
+    {
+        if (IsNew) return;
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this task?");
+        if (!confirmed) return;
+
+        IsSubmitting = true;
+        try
+        {
+            var success = await ApiService.DeleteTaskAsync(TaskModel.Id);
+            if (success)
+            {
+                ShowMessage("Task deleted successfully!", "success");
+                Navigation.NavigateTo("/tasks");
+            }
+            else
+            {
+                ShowMessage("Failed to delete task. Please try again.", "error");
+            }
+        }
+        catch (Exception)
+        {
+            ShowMessage("An error occurred while deleting the task.", "error");
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private void NavigateToTasks()
+    {
+        Navigation.NavigateTo("/tasks");
+    }
+
+    private void ShowMessage(string message, string type)
+    {
+        switch (type.ToLower())
+        {
+            case "success":
+                NotificationService.ShowSuccess(message);
+                break;
+            case "error":
+                NotificationService.ShowError(message);
+                break;
+            case "warning":
+                NotificationService.ShowWarning(message);
+                break;
+            case "info":
+                NotificationService.ShowInfo(message);
+                break;
+            default:
+                NotificationService.ShowInfo(message);
+                break;
+        }
+    }
+}

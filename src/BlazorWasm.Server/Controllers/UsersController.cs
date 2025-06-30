@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BlazorWasm.Shared.Models;
+using BlazorWasm.Shared.DTOs;
 
 namespace BlazorWasm.Server.Controllers;
 
@@ -21,23 +22,22 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all users - Admin only
+    /// Get all users for task assignments - Task managers can access
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "AdminAccess")]
+    [Authorize(Policy = "CanManageTasks")]
     public async Task<IActionResult> GetUsers()
     {
         try
         {
             var users = await _userManager.Users
-                .Select(u => new
+                .Where(u => u.IsActive)
+                .Select(u => new UserDto
                 {
-                    u.Id,
-                    u.Email,
-                    u.FirstName,
-                    u.LastName,
-                    u.IsActive,
-                    u.CreatedAt
+                    Id = u.Id,
+                    Email = u.Email,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName
                 })
                 .ToListAsync();
 
@@ -71,13 +71,13 @@ public class UsersController : ControllerBase
                 return NotFound();
             }
 
-            return Ok(new
+            return Ok(new UserProfileDto
             {
-                user.Id,
-                user.Email,
-                user.FirstName,
-                user.LastName,
-                user.CreatedAt
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                CreatedAt = user.CreatedAt
             });
         }
         catch (Exception ex)

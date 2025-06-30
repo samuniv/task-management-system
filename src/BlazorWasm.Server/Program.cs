@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using FluentValidation.AspNetCore;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,9 @@ builder.Services.AddRazorComponents()
 
 // Add controllers for API endpoints
 builder.Services.AddControllers();
+
+// Add FluentValidation
+builder.Services.AddFluentValidationAutoValidation();
 
 // Add Entity Framework
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -75,22 +79,22 @@ builder.Services.AddAuthorization(options =>
     // Admin-only access policy
     options.AddPolicy("AdminAccess", policy =>
         policy.RequireRole("Admin"));
-    
+
     // User access policy (both Admin and User roles)
     options.AddPolicy("UserAccess", policy =>
         policy.RequireRole("Admin", "User"));
-    
+
     // Task management policies
     options.AddPolicy("CanManageTasks", policy =>
         policy.RequireRole("Admin", "User"));
-    
+
     options.AddPolicy("CanManageUsers", policy =>
         policy.RequireRole("Admin"));
-    
+
     // Analytics and reporting access
     options.AddPolicy("CanViewAnalytics", policy =>
         policy.RequireRole("Admin"));
-    
+
     // Comment management
     options.AddPolicy("CanManageComments", policy =>
         policy.RequireRole("Admin", "User"));

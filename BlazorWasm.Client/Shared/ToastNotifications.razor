@@ -1,0 +1,101 @@
+@using BlazorWasm.Client.Services
+@using BlazorWasm.Shared.Models
+@implements IDisposable
+@inject INotificationService NotificationService
+
+<div class="toast-container">
+    @foreach (var notification in notifications)
+    {
+        <div class="toast toast-@(notification.Type.ToString().ToLower()) @(GetAnimationClass(notification))" 
+             @key="notification.Id">
+            <div class="toast-content">
+                <div class="toast-icon">
+                    @switch (notification.Type)
+                    {
+                        case NotificationType.Success:
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                            </svg>
+                            break;
+                        case NotificationType.Error:
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                            break;
+                        case NotificationType.Warning:
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                            </svg>
+                            break;
+                        case NotificationType.Info:
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                            </svg>
+                            break;
+                    }
+                </div>
+                <div class="toast-message">
+                    @notification.Message
+                </div>
+                <button class="toast-close" @onclick="() => CloseNotification(notification.Id)" 
+                        aria-label="Close notification">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastNotification> notifications = new();
+    private readonly Dictionary<Guid, bool> animatingOut = new();
+
+    protected override void OnInitialized()
+    {
+        NotificationService.NotificationsChanged += OnNotificationsChanged;
+        notifications = NotificationService.Notifications.ToList();
+    }
+
+    private void OnNotificationsChanged(List<ToastNotification> newNotifications)
+    {
+        // Mark notifications that are being removed for slide-out animation
+        var removedIds = notifications.Select(n => n.Id).Except(newNotifications.Select(n => n.Id));
+        foreach (var id in removedIds)
+        {
+            animatingOut[id] = true;
+        }
+
+        notifications = newNotifications.ToList();
+        InvokeAsync(StateHasChanged);
+
+        // Clean up animation tracking after animation completes
+        _ = Task.Delay(300).ContinueWith(_ =>
+        {
+            foreach (var id in removedIds)
+            {
+                animatingOut.Remove(id);
+            }
+        });
+    }
+
+    private void CloseNotification(Guid id)
+    {
+        NotificationService.RemoveNotification(id);
+    }
+
+    private string GetAnimationClass(ToastNotification notification)
+    {
+        if (animatingOut.ContainsKey(notification.Id))
+        {
+            return "toast-slide-out";
+        }
+        return "toast-slide-in";
+    }
+
+    public void Dispose()
+    {
+        NotificationService.NotificationsChanged -= OnNotificationsChanged;
+    }
+}

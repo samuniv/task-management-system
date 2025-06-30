@@ -1,0 +1,141 @@
+@using BlazorWasm.Shared.DTOs
+@using BlazorWasm.Shared.Validators
+@using FluentValidation
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@inject INotificationService NotificationService
+
+<div class="task-comments">
+    @if (IsLoading)
+    {
+        <div class="comments-loading">
+            <div class="spinner-small"></div>
+            <span>Loading comments...</span>
+        </div>
+    }
+    else
+    {
+        @if (Comments.Any())
+        {
+            <div class="comments-list">
+                @foreach (var comment in Comments.OrderBy(c => c.CreatedAt))
+                {
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <strong>@comment.UserName</strong>
+                            <span class="comment-date">@comment.CreatedAt.ToString("MMM dd, yyyy 'at' HH:mm")</span>
+                        </div>
+                        <div class="comment-content">
+                            @((MarkupString)comment.ContentHtml)
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="no-comments">No comments yet. Be the first to add one!</p>
+        }
+
+        <div class="comment-form">
+            <h4>Add a Comment</h4>
+            <EditForm Model="CommentModel" OnValidSubmit="SubmitComment" FormName="CommentForm">
+                <FluentValidationValidator />
+
+                <div class="form-group">
+                    <label for="comment-content">Comment</label>
+                    <InputTextArea id="comment-content" @bind-Value="CommentModel.Content" 
+                                   class="form-control" rows="3" 
+                                   placeholder="Write your comment here... You can use Markdown formatting."
+                                   disabled="@IsSubmitting" />
+                    <ValidationMessage For="@(() => CommentModel.Content)" />
+                    <small class="form-text text-muted">
+                        You can use Markdown formatting: **bold**, *italic*, `code`, etc.
+                    </small>
+                </div>
+
+                <div class="comment-actions">
+                    <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">
+                        @if (IsSubmitting)
+                        {
+                            <span class="spinner-small"></span>
+                        }
+                        Add Comment
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int TaskId { get; set; }
+
+    private List<CommentDisplayDto> Comments { get; set; } = new();
+    private CommentCreateDto CommentModel { get; set; } = new();
+    private bool IsLoading { get; set; } = true;
+    private bool IsSubmitting { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CommentModel.TaskId = TaskId;
+        await LoadComments();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CommentModel.TaskId != TaskId)
+        {
+            CommentModel.TaskId = TaskId;
+            await LoadComments();
+        }
+    }
+
+    private async Task LoadComments()
+    {
+        IsLoading = true;
+        try
+        {
+            var comments = await ApiService.GetTaskCommentsAsync(TaskId);
+            Comments = comments?.ToList() ?? new List<CommentDisplayDto>();
+        }
+        catch (Exception)
+        {
+            Comments = new List<CommentDisplayDto>();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SubmitComment()
+    {
+        IsSubmitting = true;
+        try
+        {
+            var newComment = await ApiService.CreateCommentAsync(CommentModel);
+            if (newComment != null)
+            {
+                Comments.Add(newComment);
+                CommentModel.Content = string.Empty; // Clear the form
+                StateHasChanged();
+                
+                // Show success message
+                NotificationService.ShowSuccess("Comment added successfully!");
+            }
+            else
+            {
+                NotificationService.ShowError("Failed to add comment. Please try again.");
+            }
+        }
+        catch (Exception)
+        {
+            NotificationService.ShowError("An error occurred while adding the comment.");
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+}

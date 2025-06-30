@@ -1,0 +1,458 @@
+@page "/tasks"
+@using BlazorWasm.Shared.DTOs
+@using BlazorWasm.Shared.Enums
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Tasks</PageTitle>
+
+<div class="task-list-container">
+    <div class="task-list-header">
+        <div class="header-left">
+            <h1>Task Management</h1>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-primary" @onclick="CreateNewTask">
+                <i class="fas fa-plus"></i> New Task
+            </button>
+        </div>
+    </div>
+    
+    <div class="task-controls">
+        <div class="search-filter-section">
+            <div class="search-filter-section">
+                <div class="search-box">
+                    <input type="text" placeholder="Search tasks..." class="form-control" 
+                           @bind="searchTerm" @oninput="OnSearchInput" />
+                </div>
+                
+                <div class="filter-controls">
+                    <select class="form-select" @bind="statusFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Review">Review</option>
+                        <option value="Done">Done</option>
+                    </select>
+                    
+                    <select class="form-select" @bind="priorityFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Priority</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                    
+                    <select class="form-select" @bind="assigneeFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Assignees</option>
+                        <option value="unassigned">Unassigned</option>
+                        <!-- TODO: Load dynamic assignee list -->
+                    </select>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" @onclick="CreateNewTask">
+                    <i class="fas fa-plus"></i> New Task
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="task-list-content">
+        @if (isLoading)
+        {
+            <div class="loading-indicator">
+                <div class="spinner"></div>
+                <span>Loading tasks...</span>
+            </div>
+        }
+        else if (errorMessage != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                @errorMessage
+                <button class="btn btn-sm btn-outline-danger ms-2" @onclick="LoadTasks">
+                    Retry
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="task-table-container">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">
+                                <span class="sortable" @onclick="() => SetSort(nameof(TaskDto.Title))">
+                                    Title
+                                    @if (currentSort == nameof(TaskDto.Title))
+                                    {
+                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sort"></i>
+                                    }
+                                </span>
+                            </th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Priority</th>
+                            <th scope="col">Assignee</th>
+                            <th scope="col">
+                                <span class="sortable" @onclick="() => SetSort(nameof(TaskDto.DueDate))">
+                                    Due Date
+                                    @if (currentSort == nameof(TaskDto.DueDate))
+                                    {
+                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sort"></i>
+                                    }
+                                </span>
+                            </th>
+                            <th scope="col">
+                                <span class="sortable" @onclick="() => SetSort(nameof(TaskDto.CreatedAt))">
+                                    Created
+                                    @if (currentSort == nameof(TaskDto.CreatedAt))
+                                    {
+                                        <i class="fas @(sortDirection == "asc" ? "fa-sort-up" : "fa-sort-down")"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sort"></i>
+                                    }
+                                </span>
+                            </th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (tasks != null && tasks.Any())
+                        {
+                            @foreach (var task in tasks)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="task-title">
+                                            <a href="/tasks/@task.Id">@task.Title</a>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(task.Description))
+                                        {
+                                            <div class="task-description">@task.Description</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(task.Status)">@GetStatusDisplayName(task.Status)</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetPriorityBadgeClass(task.Priority)">@task.Priority</span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(task.AssigneeName))
+                                        {
+                                            <div class="assignee">
+                                                <img src="/images/avatar-placeholder.png" alt="Avatar" class="avatar" />
+                                                <span>@task.AssigneeName</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="assignee">
+                                                <span class="unassigned">Unassigned</span>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (task.DueDate.HasValue)
+                                        {
+                                            <span class="due-date @(task.DueDate < DateTime.Now ? "due-soon" : "")">
+                                                @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No due date</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="created-date">@task.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-outline-primary" title="Edit" @onclick="() => EditTask(task.Id)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => DeleteTask(task.Id)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    @if (hasFilters)
+                                    {
+                                        <span>No tasks found matching your filters.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>No tasks available. <button class="btn btn-link" @onclick="CreateNewTask">Create your first task</button></span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalCount > 0)
+            {
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Showing @((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, totalCount) of @totalCount tasks
+                    </div>
+                    
+                    <nav aria-label="Task pagination">
+                        <ul class="pagination">
+                            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(currentPage - 1)" disabled="@(currentPage <= 1)">
+                                    Previous
+                                </button>
+                            </li>
+                            
+                            @for (int pageNum = Math.Max(1, currentPage - 2); pageNum <= Math.Min(totalPages, currentPage + 2); pageNum++)
+                            {
+                                <li class="page-item @(pageNum == currentPage ? "active" : "")">
+                                    <button class="page-link" @onclick="() => GoToPage(pageNum)">
+                                        @pageNum
+                                    </button>
+                                </li>
+                            }
+                            
+                            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(currentPage + 1)" disabled="@(currentPage >= totalPages)">
+                                    Next
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                    
+                    <div class="page-size-selector">
+                        <label for="pageSize">Items per page:</label>
+                        <select id="pageSize" class="form-select form-select-sm" @bind="pageSize" @bind:after="OnPageSizeChanged">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    // State variables
+    private TaskDto[]? tasks;
+    private bool isLoading = true;
+    private string? errorMessage;
+    
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalCount = 0;
+    private int totalPages => (int)Math.Ceiling((double)totalCount / pageSize);
+    
+    // Filtering and searching
+    private string searchTerm = string.Empty;
+    private string statusFilter = string.Empty;
+    private string priorityFilter = string.Empty;
+    private string assigneeFilter = string.Empty;
+    
+    // Sorting
+    private string currentSort = string.Empty;
+    private string sortDirection = "asc";
+    
+    // Debouncing
+    private Timer? searchTimer;
+    private const int DebounceDelay = 300; // milliseconds
+    
+    // Computed properties
+    private bool hasFilters => !string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(statusFilter) || 
+                              !string.IsNullOrEmpty(priorityFilter) || !string.IsNullOrEmpty(assigneeFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async Task LoadTasks()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            var sortQuery = string.IsNullOrEmpty(currentSort) ? "" : $"{currentSort}:{sortDirection}";
+            
+            var (loadedTasks, count) = await ApiService.GetTasksAsync(
+                page: currentPage,
+                pageSize: pageSize,
+                search: string.IsNullOrEmpty(searchTerm) ? null : searchTerm,
+                sort: string.IsNullOrEmpty(sortQuery) ? null : sortQuery,
+                filterStatus: string.IsNullOrEmpty(statusFilter) ? null : statusFilter
+            );
+
+            tasks = loadedTasks;
+            totalCount = count;
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to load tasks. Please try again.";
+            tasks = null;
+            totalCount = 0;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page >= 1 && page <= totalPages && page != currentPage)
+        {
+            currentPage = page;
+            await LoadTasks();
+        }
+    }
+
+    private async Task OnPageSizeChanged()
+    {
+        currentPage = 1; // Reset to first page
+        await LoadTasks();
+    }
+
+    private async Task SetSort(string column)
+    {
+        if (currentSort == column)
+        {
+            // Toggle direction
+            sortDirection = sortDirection == "asc" ? "desc" : "asc";
+        }
+        else
+        {
+            currentSort = column;
+            sortDirection = "asc";
+        }
+        
+        currentPage = 1; // Reset to first page
+        await LoadTasks();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        currentPage = 1; // Reset to first page when filters change
+        await LoadTasks();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        
+        // Debounce the search
+        searchTimer?.Dispose();
+        searchTimer = new Timer(async _ =>
+        {
+            currentPage = 1; // Reset to first page
+            await InvokeAsync(async () =>
+            {
+                await LoadTasks();
+            });
+        }, null, DebounceDelay, Timeout.Infinite);
+    }
+
+    private void CreateNewTask()
+    {
+        Navigation.NavigateTo("/tasks/new");
+    }
+
+    private void EditTask(int taskId)
+    {
+        Navigation.NavigateTo($"/tasks/{taskId}");
+    }
+
+    private async Task DeleteTask(int taskId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this task?"))
+        {
+            try
+            {
+                var success = await ApiService.DeleteTaskAsync(taskId);
+                if (success)
+                {
+                    await LoadTasks(); // Refresh the list
+                    await JSRuntime.InvokeVoidAsync("alert", "Task deleted successfully.");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Failed to delete task.");
+                }
+            }
+            catch (Exception)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error occurred while deleting task.");
+            }
+        }
+    }
+
+    // Helper methods for styling
+    private string GetStatusBadgeClass(BlazorWasm.Shared.Enums.TaskStatus status)
+    {
+        return status switch
+        {
+            BlazorWasm.Shared.Enums.TaskStatus.Pending => "badge-status-pending",
+            BlazorWasm.Shared.Enums.TaskStatus.InProgress => "badge-status-in-progress",
+            BlazorWasm.Shared.Enums.TaskStatus.Review => "badge-status-review",
+            BlazorWasm.Shared.Enums.TaskStatus.Done => "badge-status-done",
+            _ => "badge-status-pending"
+        };
+    }
+
+    private string GetPriorityBadgeClass(Priority priority)
+    {
+        return priority switch
+        {
+            Priority.Low => "badge-priority-low",
+            Priority.Medium => "badge-priority-medium",
+            Priority.High => "badge-priority-high",
+            Priority.Critical => "badge-priority-critical",
+            _ => "badge-priority-medium"
+        };
+    }
+
+    private string GetStatusDisplayName(BlazorWasm.Shared.Enums.TaskStatus status)
+    {
+        return status switch
+        {
+            BlazorWasm.Shared.Enums.TaskStatus.InProgress => "In Progress",
+            _ => status.ToString()
+        };
+    }
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
+    }
+}

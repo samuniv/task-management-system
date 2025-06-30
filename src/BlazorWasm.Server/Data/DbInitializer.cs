@@ -179,7 +179,7 @@ public static class DbInitializer
     private static async Task CreateCommentsAsync(ApplicationDbContext context, List<ApplicationUser> users)
     {
         var tasks = await context.Tasks.ToListAsync();
-        
+
         var comments = new Comment[]
         {
             new Comment

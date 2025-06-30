@@ -7,6 +7,7 @@ using BlazorWasm.Server.Data;
 using BlazorWasm.Shared.DTOs;
 using System.Security.Claims;
 using TaskStatus = BlazorWasm.Shared.Enums.TaskStatus;
+using Markdig;
 
 namespace BlazorWasm.Server.Controllers;
 
@@ -17,11 +18,18 @@ public class TasksController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<TasksController> _logger;
+    private readonly MarkdownPipeline _markdownPipeline;
 
     public TasksController(ApplicationDbContext context, ILogger<TasksController> logger)
     {
         _context = context;
         _logger = logger;
+
+        // Configure Markdown pipeline for security
+        _markdownPipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .DisableHtml() // Disable raw HTML for security
+            .Build();
     }
 
     /// <summary>
@@ -48,8 +56,8 @@ public class TasksController : ControllerBase
             // Apply search filter
             if (!string.IsNullOrEmpty(search))
             {
-                query = query.Where(t => 
-                    t.Title.Contains(search) || 
+                query = query.Where(t =>
+                    t.Title.Contains(search) ||
                     (t.Description != null && t.Description.Contains(search)));
             }
 
@@ -80,7 +88,7 @@ public class TasksController : ControllerBase
 
                 query = sortField.ToLower() switch
                 {
-                    "title" => sortDirection.ToLower() == "desc" 
+                    "title" => sortDirection.ToLower() == "desc"
                         ? query.OrderByDescending(t => t.Title)
                         : query.OrderBy(t => t.Title),
                     "status" => sortDirection.ToLower() == "desc"
@@ -192,6 +200,61 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
+    /// Get a task for editing (TaskEditDto format)
+    /// </summary>
+    [HttpGet("{id}/edit")]
+    [Authorize(Policy = "CanManageTasks")]
+    public async Task<IActionResult> GetTaskForEdit(int id)
+    {
+        try
+        {
+            var task = await _context.Tasks
+                .Include(t => t.Assignee)
+                .Include(t => t.Creator)
+                .Include(t => t.Comments.Where(c => !c.IsDeleted))
+                .ThenInclude(c => c.User)
+                .Where(t => !t.IsDeleted && t.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (task == null)
+            {
+                return NotFound();
+            }
+
+            var taskEditDto = new TaskEditDto
+            {
+                Id = task.Id,
+                Title = task.Title,
+                Description = task.Description,
+                Status = task.Status,
+                Priority = task.Priority,
+                AssigneeId = task.AssigneeId,
+                CreatorId = task.CreatorId,
+                CreatorName = $"{task.Creator.FirstName} {task.Creator.LastName}",
+                DueDate = task.DueDate,
+                CreatedAt = task.CreatedAt,
+                UpdatedAt = task.UpdatedAt,
+                Comments = task.Comments.Select(c => new CommentDisplayDto
+                {
+                    Id = c.Id,
+                    Content = c.Content,
+                    ContentHtml = Markdown.ToHtml(c.Content, _markdownPipeline),
+                    UserId = c.UserId,
+                    UserName = $"{c.User.FirstName} {c.User.LastName}",
+                    CreatedAt = c.CreatedAt
+                }).ToList()
+            };
+
+            return Ok(taskEditDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving task for edit {TaskId}", id);
+            return StatusCode(500, new { message = "Error retrieving task" });
+        }
+    }
+
+    /// <summary>
     /// Create a new task
     /// </summary>
     [HttpPost]
@@ -201,7 +264,7 @@ public class TasksController : ControllerBase
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            
+
             var task = new TaskItem
             {
                 Title = createTaskDto.Title,
@@ -330,6 +393,105 @@ public class TasksController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting task {TaskId}", id);
             return StatusCode(500, new { message = "Error deleting task" });
+        }
+    }
+
+    /// <summary>
+    /// Get comments for a specific task
+    /// </summary>
+    [HttpGet("{id}/comments")]
+    [Authorize(Policy = "CanManageTasks")]
+    public async Task<IActionResult> GetTaskComments(int id)
+    {
+        try
+        {
+            var task = await _context.Tasks.FindAsync(id);
+            if (task == null || task.IsDeleted)
+            {
+                return NotFound("Task not found");
+            }
+
+            var comments = await _context.Comments
+                .Include(c => c.User)
+                .Where(c => c.TaskId == id && !c.IsDeleted)
+                .OrderBy(c => c.CreatedAt)
+                .ToListAsync();
+
+            var commentDtos = comments.Select(c => new CommentDisplayDto
+            {
+                Id = c.Id,
+                Content = c.Content,
+                ContentHtml = Markdown.ToHtml(c.Content, _markdownPipeline),
+                UserId = c.UserId,
+                UserName = $"{c.User.FirstName} {c.User.LastName}",
+                CreatedAt = c.CreatedAt
+            }).ToList();
+
+            return Ok(commentDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving comments for task {TaskId}", id);
+            return StatusCode(500, new { message = "Error retrieving comments" });
+        }
+    }
+
+    /// <summary>
+    /// Add a comment to a task
+    /// </summary>
+    [HttpPost("{id}/comments")]
+    [Authorize(Policy = "CanManageTasks")]
+    public async Task<IActionResult> AddTaskComment(int id, [FromBody] CommentCreateDto commentDto)
+    {
+        try
+        {
+            var task = await _context.Tasks.FindAsync(id);
+            if (task == null || task.IsDeleted)
+            {
+                return NotFound("Task not found");
+            }
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            var comment = new Comment
+            {
+                TaskId = id,
+                UserId = userId,
+                Content = commentDto.Content,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
+
+            // Return the created comment with user information
+            var createdComment = await _context.Comments
+                .Include(c => c.User)
+                .Where(c => c.Id == comment.Id)
+                .FirstOrDefaultAsync();
+
+            if (createdComment != null)
+            {
+                var commentDto2 = new CommentDisplayDto
+                {
+                    Id = createdComment.Id,
+                    Content = createdComment.Content,
+                    ContentHtml = Markdown.ToHtml(createdComment.Content, _markdownPipeline),
+                    UserId = createdComment.UserId,
+                    UserName = $"{createdComment.User.FirstName} {createdComment.User.LastName}",
+                    CreatedAt = createdComment.CreatedAt
+                };
+
+                _logger.LogInformation("Comment {CommentId} added to task {TaskId} by user {UserId}", comment.Id, id, userId);
+                return CreatedAtAction(nameof(GetTaskComments), new { id }, commentDto2);
+            }
+
+            return StatusCode(500, new { message = "Error retrieving created comment" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding comment to task {TaskId}", id);
+            return StatusCode(500, new { message = "Error adding comment" });
         }
     }
 }

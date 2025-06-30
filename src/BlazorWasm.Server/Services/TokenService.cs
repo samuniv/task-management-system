@@ -82,8 +82,8 @@ public class TokenService : ITokenService
         try
         {
             var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken validatedToken);
-            
-            if (validatedToken is not JwtSecurityToken jwtToken || 
+
+            if (validatedToken is not JwtSecurityToken jwtToken ||
                 !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
             {
                 return null;
@@ -100,7 +100,7 @@ public class TokenService : ITokenService
 
     private string GetJwtKey()
     {
-        return _configuration["Jwt:Key"] ?? 
+        return _configuration["Jwt:Key"] ??
                "MySecretKeyThatIsAtLeast32CharactersLongForDevelopment!"; // Fallback for development
     }
 
